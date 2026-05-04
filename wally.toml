@@ -1,0 +1,10 @@
+[package]
+name = "nutea/triggermythframework"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
+knit = "sleitnick/knit@1.7.0"
+comm = "sleitnick/comm@1.0.1"
+observers = "sleitnick/observers@0.5.0"

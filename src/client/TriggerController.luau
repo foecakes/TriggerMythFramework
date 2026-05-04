@@ -7,6 +7,7 @@ local knit = require(ReplicatedStorage.Packages.knit)
 local observers = require(ReplicatedStorage.Packages.observers)
 local GeneralConfig = require(ReplicatedStorage.Shared.Constants.GeneralConfig)
 local SummonModelUtil = require(ReplicatedStorage.Shared.Utilities.SummonModelUtil)
+local SoundLib = require(ReplicatedStorage.Shared.Utilities.SoundUtil)
 
 local observeTag = observers.observeTag
 local TriggerService -->! Initialized in knitInit
@@ -30,9 +31,14 @@ function TriggerController:KnitStart()
         end)
     end
 
-    -->! Connect the client summon model function
-    TriggerService.SummonModel:Connect(function(modelName)
-        SummonModelUtil.Summon(modelName)
+    -->! Connect the client trigger action function
+    TriggerService.SummonModel:Connect(function(modelName, action)
+        SummonModelUtil.ExecuteAction(modelName, action)
+    end)
+
+    -->! Connect the client play sound function
+    TriggerService.PlaySound:Connect(function(soundName)
+        SoundLib.PlaySFX(soundName)
     end)
 end
 

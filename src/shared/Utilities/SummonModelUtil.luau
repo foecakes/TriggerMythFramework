@@ -297,5 +297,41 @@ function SummonModelUtil.Summon(modelName: string): Instance?
 	return instance
 end
 
+--[[
+	ExecuteAction – High-level method that finds an "UnlockableModel"-tagged
+	instance by name and executes the given action ("Appear" or "Disappear").
+	Skips if the instance is already in the target state.
+	Returns the instance if found, nil otherwise.
+]]
+function SummonModelUtil.ExecuteAction(modelName: string, action: string): Instance?
+	assert(modelName, "SummonModelUtil.ExecuteAction - modelName expected, got nil")
+	assert(action, "SummonModelUtil.ExecuteAction - action expected, got nil")
+
+	-->! Find the tagged instance by name
+	local instance = SummonModelUtil.FindUnlockable(modelName)
+	if not instance then
+		warn("SummonModelUtil.ExecuteAction - No unlockable found with name: " .. modelName)
+		return nil
+	end
+
+	if action == "Appear" then
+		-->! Skip if already unlocked
+		if instance:GetAttribute("Unlocked") == true then
+			return instance
+		end
+		SummonModelUtil.AppearModel(instance)
+	elseif action == "Disappear" then
+		-->! Skip if already locked
+		if instance:GetAttribute("Unlocked") == false then
+			return instance
+		end
+		SummonModelUtil.DisappearModel(instance)
+	else
+		warn("SummonModelUtil.ExecuteAction - Unknown action: " .. action)
+	end
+
+	return instance
+end
+
 --//Return
 return SummonModelUtil

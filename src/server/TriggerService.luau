@@ -6,9 +6,11 @@
 	and wires them to summon/reveal "UnlockableModel"-tagged Models and Folders.
 
 	Trigger parts require:
-		• A "ModelToSummon" string attribute (must match the Name of a tagged instance).
-		• An optional "TriggerType" string attribute ("Touch" | "Click"). Falls back to
+		-> A "ModelToSummon" string attribute (must match the Name of a tagged instance).
+		-> An optional "TriggerType" string attribute ("Touch" | "Click"). Falls back to
 		  GeneralConfig.DefaultTriggerType when absent.
+		-> An optional "SetText" string attribute. When present, sets a Hint in the
+		  workspace with the given text when the trigger fires.
 ]]
 
 --//Services
@@ -20,6 +22,8 @@ local knit = require(ReplicatedStorage.Packages.knit)
 local observers = require(ReplicatedStorage.Packages.observers)
 local GeneralConfig = require(ReplicatedStorage.Shared.Constants.GeneralConfig)
 local SummonModelUtil = require(ReplicatedStorage.Shared.Utilities.SummonModelUtil)
+local SetHint = require(ReplicatedStorage.Shared.Utilities.SetHintUtil)
+local SoundLib = require(ReplicatedStorage.Shared.Utilities.SoundUtil)
 local observeTag = observers.observeTag
 
 --//Types
@@ -27,26 +31,68 @@ export type TriggerPartData = {
 	Part: BasePart,
 	ModelToSummon: string,
 	TriggerType: string,
+	TriggerAction: string,
+	SetText: string?,
+	PlaySound: string?,
 	Connection: RBXScriptConnection?,
 }
 
 --//Constructor
 local TriggerService = knit.CreateService {
 	Name = "TriggerService",
-	Client = { SummonModel = knit.CreateSignal() },
+	Client = {
+		SummonModel = knit.CreateSignal(),
+		PlaySound = knit.CreateSignal(),
+	},
 }
 
 --//Helpers
 --[[
+	parseModelNames – Splits a comma-separated string of model names into
+	a list of trimmed, non-empty strings.
+]]
+local function parseModelNames(raw: string): { string }
+	local names: { string } = {}
+	for name in string.gmatch(raw, "[^,]+") do
+		local trimmed = string.match(name, "^%s*(.-)%s*$")
+		if trimmed and trimmed ~= "" then
+			table.insert(names, trimmed)
+		end
+	end
+	return names
+end
+
+--[[
+	executeForModels – Runs the given action for each model name in the
+	comma-separated list, either on the server or by signalling the client.
+]]
+local function executeForModels(modelNames: { string }, action: string, player: Player?)
+	local isServerMode = GeneralConfig.ReplicationMode == "Server"
+
+	for _, modelName in modelNames do
+		if isServerMode then
+			SummonModelUtil.ExecuteAction(modelName, action)
+		else
+			if player then
+				TriggerService.Client.SummonModel:Fire(player, modelName, action)
+			end
+		end
+	end
+end
+
+--[[
 	processTrigger – Wires a Touch or Click connection to the trigger part.
-	When fired, summons the associated model either on the server or by
-	signalling the client, depending on GeneralConfig.ReplicationMode.
+	When fired, executes the configured action on all listed models either
+	on the server or by signalling the client, depending on
+	GeneralConfig.ReplicationMode.
 ]]
 local function processTrigger(partData: TriggerPartData)
 	local triggerPart = partData.Part
-	local modelToSummonName = partData.ModelToSummon
+	local modelNames = parseModelNames(partData.ModelToSummon)
 	local triggerType = partData.TriggerType
-	local isServerMode = GeneralConfig.ReplicationMode == "Server"
+	local action = partData.TriggerAction
+	local setText = partData.SetText
+	local playSoundName = partData.PlaySound
 
 	if triggerType == "Touch" then
 		partData.Connection = triggerPart.Touched:Connect(function(hitPart: BasePart)
@@ -54,11 +100,18 @@ local function processTrigger(partData: TriggerPartData)
 			local player = Players:GetPlayerFromCharacter(hitPart.Parent)
 			if not player then return end
 
-			-->! Summon model depending on set replication mode
-			if isServerMode then
-				SummonModelUtil.Summon(modelToSummonName)
-			else
-				TriggerService.Client.SummonModel:Fire(player, modelToSummonName)
+			executeForModels(modelNames, action, player)
+			if setText then SetHint(setText) end
+			if playSoundName then
+				-->! Check if the sound exists inside the trigger part (spatial audio)
+				local partSound = triggerPart:FindFirstChild(playSoundName, true) :: Sound?
+				if partSound then
+					partSound:Play()
+				elseif GeneralConfig.ReplicationMode == "Server" then
+					SoundLib.PlaySFX(playSoundName)
+				else
+					TriggerService.Client.PlaySound:Fire(player, playSoundName)
+				end
 			end
 		end)
 
@@ -73,11 +126,18 @@ local function processTrigger(partData: TriggerPartData)
 
 		-->! Setup click connection
 		partData.Connection = clickDetector.MouseClick:Connect(function(player: Player)
-			-->! Summon model depending on set replication mode
-			if isServerMode then
-				SummonModelUtil.Summon(modelToSummonName)
-			else
-				TriggerService.Client.SummonModel:Fire(player, modelToSummonName)
+			executeForModels(modelNames, action, player)
+			if setText then SetHint(setText) end
+			if playSoundName then
+				-->! Check if the sound exists inside the trigger part (spatial audio)
+				local partSound = triggerPart:FindFirstChild(playSoundName, true) :: Sound?
+				if partSound then
+					partSound:Play()
+				elseif GeneralConfig.ReplicationMode == "Server" then
+					SoundLib.PlaySFX(playSoundName)
+				else
+					TriggerService.Client.PlaySound:Fire(player, playSoundName)
+				end
 			end
 		end)
 	end
@@ -104,11 +164,32 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 		triggerType = GeneralConfig.DefaultTriggerType
 	end
 
+	-->! Get trigger action from part, falling back to the configured default
+	local triggerAction = part:GetAttribute("TriggerAction")
+	if not triggerAction or type(triggerAction) ~= "string" then
+		triggerAction = GeneralConfig.DefaultTriggerAction
+	end
+
+	-->! Get optional SetText attribute
+	local setText = part:GetAttribute("SetText")
+	if setText and type(setText) ~= "string" then
+		setText = nil
+	end
+
+	-->! Get optional PlaySound attribute
+	local playSound = part:GetAttribute("PlaySound")
+	if playSound and type(playSound) ~= "string" then
+		playSound = nil
+	end
+
 	-->! Build part data and wire the trigger
 	local partData: TriggerPartData = {
 		Part = part,
 		ModelToSummon = modelToSummon :: string,
 		TriggerType = triggerType :: string,
+		TriggerAction = triggerAction :: string,
+		SetText = setText :: string?,
+		PlaySound = playSound :: string?,
 	}
 
 	processTrigger(partData)

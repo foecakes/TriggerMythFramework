@@ -23,8 +23,8 @@
     The framework expects the following packages inside
     ReplicatedStorage.Packages:
 
-        • knit          → Knit framework (service/controller architecture)
-        • observers     → observeTag utility for CollectionService observation
+        -> knit          → Knit framework (service/controller architecture)
+        -> observers     → observeTag utility for CollectionService observation
 
 
     ───────────────────────────────────────────────────────────────
@@ -74,19 +74,33 @@
         │ Attribute        │ Type     │ Description                      │
         ├──────────────────┼──────────┼──────────────────────────────────┤
         │ ModelToSummon    │ string   │ REQUIRED. Must match the .Name   │
-        │                  │          │ of a tagged Model/Folder.        │
+        │                  │          │ of a tagged Model/Folder. Use    │
+        │                  │          │ commas to target multiple:       │
+        │                  │          │ "ModelA, ModelB, ModelC"         │
         ├──────────────────┼──────────┼──────────────────────────────────┤
         │ TriggerType      │ string   │ OPTIONAL. "Touch" or "Click".    │
         │                  │          │ Defaults to GeneralConfig        │
         │                  │          │ .DefaultTriggerType ("Touch").   │
+        ├──────────────────┼──────────┼──────────────────────────────────┤
+        │ TriggerAction    │ string   │ OPTIONAL. "Appear" or            │
+        │                  │          │ "Disappear". Defaults to         │
+        │                  │          │ GeneralConfig                    │
+        │                  │          │ .DefaultTriggerAction ("Appear")│
+        ├──────────────────┼──────────┼──────────────────────────────────┤
+        │ SetText          │ string   │ OPTIONAL. When set, displays a   │
+        │                  │          │ Hint with the given text when    │
+        │                  │          │ the trigger fires.               │
+        ├──────────────────┼──────────┼──────────────────────────────────┤
+        │ PlaySound        │ string   │ OPTIONAL. Name of a Sound in     │
+        │                  │          │ SoundService to play when the    │
+        │                  │          │ trigger fires.                   │
         └──────────────────┴──────────┴──────────────────────────────────┘
 
     3. PLAY
 
-        When a player touches (or clicks) the trigger part, the
-        matching unlockable fades in with a staggered transparency
-        tween, collision is restored, and the "Unlocked" attribute
-        is set to true on the Model/Folder.
+        When a player touches (or clicks) the trigger part, all
+        listed unlockables are affected based on the TriggerAction.
+        "Appear" fades them in; "Disappear" fades them out.
 
 
     ───────────────────────────────────────────────────────────────
@@ -95,20 +109,23 @@
 
     Located at: shared/Constants/GeneralConfig.luau
 
-    ┌────────────────────┬────────────────┬─────────────────────────────┐
-    │ Property           │ Default        │ Description                 │
-    ├────────────────────┼────────────────┼─────────────────────────────┤
-    │ AnimationsOn       │ true           │ Whether to animate reveals  │
-    ├────────────────────┼────────────────┼─────────────────────────────┤
-    │ ReplicationMode    │ "Server"       │ "Server" or "Client" —      │
-    │                    │                │ where summons are executed  │
-    ├────────────────────┼────────────────┼─────────────────────────────┤
-    │ DefaultTriggerType │ "Touch"        │ Fallback when TriggerType   │
-    │                    │                │ attribute is missing        │
-    ├────────────────────┼────────────────┼─────────────────────────────┤
-    │ TriggerPartTag     │ "TRIGGER_PART" │ CollectionService tag for   │
-    │                    │                │ trigger detection parts     │
-    └────────────────────┴────────────────┴─────────────────────────────┘
+    ┌──────────────────────┬────────────────┬─────────────────────────────┐
+    │ Property             │ Default        │ Description                 │
+    ├──────────────────────┼────────────────┼─────────────────────────────┤
+    │ AnimationsOn         │ true           │ Whether to animate reveals  │
+    ├──────────────────────┼────────────────┼─────────────────────────────┤
+    │ ReplicationMode      │ "Server"       │ "Server" or "Client" —      │
+    │                      │                │ where summons are executed  │
+    ├──────────────────────┼────────────────┼─────────────────────────────┤
+    │ DefaultTriggerType   │ "Touch"        │ Fallback when TriggerType   │
+    │                      │                │ attribute is missing        │
+    ├──────────────────────┼────────────────┼─────────────────────────────┤
+    │ DefaultTriggerAction │ "Appear"       │ Fallback when TriggerAction │
+    │                      │                │ attribute is missing        │
+    ├──────────────────────┼────────────────┼─────────────────────────────┤
+    │ TriggerPartTag       │ "TRIGGER_PART" │ CollectionService tag for   │
+    │                      │                │ trigger detection parts     │
+    └──────────────────────┴────────────────┴─────────────────────────────┘
 
 
     ───────────────────────────────────────────────────────────────
@@ -117,31 +134,36 @@
 
     Located at: shared/Utilities/SummonModelUtil.luau
 
-    • InitModel(instance: Instance)
+    -> InitModel(instance: Instance)
         Caches the original Transparency and CanCollide of every
         descendant BasePart, Decal, and Texture. Then immediately
         hides the instance (Transparency = 1, CanCollide = false)
         and sets the "Unlocked" attribute to false.
         Called automatically by TriggerService on startup.
 
-    • FindUnlockable(name: string): Instance?
+    -> FindUnlockable(name: string): Instance?
         Searches all "UnlockableModel"-tagged instances and returns
         the first one whose .Name matches the given name.
 
-    • AppearModel(instance: Instance)
+    -> AppearModel(instance: Instance)
         Tweens the instance from hidden → visible with a staggered
         per-part delay. CanCollide is restored AFTER the tween
         finishes (parts originally CanCollide = false stay false).
         Sets "Unlocked" = true.
 
-    • DisappearModel(instance: Instance)
+    -> DisappearModel(instance: Instance)
         Tweens the instance from visible → hidden. CanCollide is
         disabled IMMEDIATELY to prevent interaction during fade-out.
         Sets "Unlocked" = false.
 
-    • Summon(modelName: string): Instance?
+    -> Summon(modelName: string): Instance?
         High-level method: finds the instance by name and plays
         AppearModel. Skips if already unlocked. Returns the instance.
+
+    -> ExecuteAction(modelName: string, action: string): Instance?
+        Finds the instance by name and runs the given action:
+        "Appear" calls AppearModel, "Disappear" calls DisappearModel.
+        Skips if already in the target state. Returns the instance.
 
 
     ───────────────────────────────────────────────────────────────
@@ -150,13 +172,13 @@
 
     The framework respects original CanCollide values:
 
-        • A part with CanCollide = true in Studio will become
+        -> A part with CanCollide = true in Studio will become
           collidable again after its appear tween finishes.
 
-        • A part with CanCollide = false in Studio will STAY
+        -> A part with CanCollide = false in Studio will STAY
           non-collidable even after appearing.
 
-        • During disappear, ALL parts are set to CanCollide = false
+        -> During disappear, ALL parts are set to CanCollide = false
           immediately, regardless of their original value.
 
 
@@ -168,8 +190,8 @@
     Models/Folders so external scripts can react to state changes:
 
         "Unlocked" (boolean)
-            • true  → The instance has been summoned and is visible.
-            • false → The instance is hidden (initial or re-locked).
+            -> true  → The instance has been summoned and is visible.
+            -> false → The instance is hidden (initial or re-locked).
 
     You can listen for changes from other scripts:
 

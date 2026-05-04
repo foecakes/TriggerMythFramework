@@ -22,9 +22,6 @@ local GeneralConfig = require(ReplicatedStorage.Shared.Constants.GeneralConfig)
 local SummonModelUtil = require(ReplicatedStorage.Shared.Utilities.SummonModelUtil)
 local observeTag = observers.observeTag
 
---//Constants
-local UNLOCKABLE_TAG = "UnlockableModel"
-
 --//Types
 export type TriggerPartData = {
 	Part: BasePart,
@@ -127,13 +124,15 @@ end
 
 --//Lifecycle
 function TriggerService:KnitInit()
-	-->! Observe UnlockableModel-tagged instances and hide them on discovery
-	observeTag(UNLOCKABLE_TAG, function(instance: Instance)
-		SummonModelUtil.InitModel(instance)
+	-->! Only hide models globally if we are in Server replication mode
+	if GeneralConfig.ReplicationMode == "Server" then
+		observeTag(GeneralConfig.UnlockableTag, function(instance: Instance)
+			SummonModelUtil.InitModel(instance)
 
-		-->! No teardown needed; weak-keyed caches handle cleanup on destroy
-		return function() end
-	end)
+			-->! No teardown needed; weak-keyed caches handle cleanup on destroy
+			return function() end
+		end)
+	end
 end
 
 function TriggerService:KnitStart()

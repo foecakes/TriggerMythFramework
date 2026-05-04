@@ -16,4 +16,5 @@ for _, serviceModule in script:GetDescendants() do
         end
     end
 end
-knit.Start():andThen():catch(warn)
+knit.Start():andThen(function()
+end):catch(warn)

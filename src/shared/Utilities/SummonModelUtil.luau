@@ -9,19 +9,21 @@
 	transparent (and non-collidable) to their original cached state, and vice-versa.
 
 	Public API:
-		InitModel(instance)        – Cache original visual state and hide the instance.
-		FindUnlockable(name)       – Locate a tagged instance by name.
-		AppearModel(instance)      – Tween the instance into visibility; sets Unlocked = true.
-		DisappearModel(instance)   – Tween the instance back to hidden; sets Unlocked = false.
-		Summon(modelName)          – Find by name + AppearModel. Returns the instance.
+		InitModel(instance)        -> Cache original visual state and hide the instance.
+		FindUnlockable(name)       -> Locate a tagged instance by name.
+		AppearModel(instance)      -> Tween the instance into visibility; sets Unlocked = true.
+		DisappearModel(instance)   -> Tween the instance back to hidden; sets Unlocked = false.
+		Summon(modelName)          -> Find by name + AppearModel. Returns the instance.
 ]]
 
 --//Services
 local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local GeneralConfig = require(ReplicatedStorage.Shared.Constants.GeneralConfig)
 
 --//Constants
-local UNLOCKABLE_TAG = "UnlockableModel"
+local UNLOCKABLE_TAG = GeneralConfig.UnlockableTag
 local TWEEN_INFO = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local STAGGER_DELAY = 0.02
 
@@ -42,7 +44,7 @@ local SummonModelUtil = {}
 --//Cache
 --[[
 	originalData – Stores the original visual state for every tagged instance.
-	Weak-keyed so entries are collected when their instance is destroyed.
+	Weak-keyed to allow for the garbage collector to do its job.
 ]]
 local originalData: { [Instance]: ModelCache } = {}
 setmetatable(originalData :: any, { __mode = "k" })
@@ -55,41 +57,6 @@ local pendingTasks: { [Instance]: { thread } } = {}
 setmetatable(pendingTasks :: any, { __mode = "k" })
 
 --//Helpers
---[[
-	collectDescendants – Walks the hierarchy under `root` and records every
-	BasePart, Decal and Texture it finds. Returns a lookup dict (Instance → snapshot)
-	and an ordered array for staggered iteration.
-]]
-local function collectDescendants(root: Instance): ({ [Instance]: PartSnapshot }, { Instance })
-	local data: { [Instance]: PartSnapshot } = {}
-	local list: { Instance } = {}
-
-	local function register(obj: Instance)
-		if obj:IsA("BasePart") then
-			data[obj] = {
-				Transparency = (obj :: BasePart).Transparency,
-				CanCollide = (obj :: BasePart).CanCollide,
-			}
-			table.insert(list, obj)
-		elseif obj:IsA("Decal") or obj:IsA("Texture") then
-			data[obj] = {
-				Transparency = (obj :: Decal).Transparency,
-			}
-			table.insert(list, obj)
-		end
-	end
-
-	--> Register root itself if applicable
-	register(root)
-
-	--> Register all descendants
-	for _, desc in root:GetDescendants() do
-		register(desc)
-	end
-
-	return data, list
-end
-
 --[[
 	cancelPendingTasks – Cancels every scheduled task.delay handle associated
 	with the given instance, preventing stale animations from interfering.
@@ -122,21 +89,49 @@ end
 	CanCollide = false). Should be called once per tagged instance at startup.
 ]]
 function SummonModelUtil.InitModel(instance: Instance)
-	local data, list = collectDescendants(instance)
+	local data: { [Instance]: PartSnapshot } = {}
+	local list: { Instance } = {}
 	originalData[instance] = { partData = data, partList = list }
 
-	-->! Hide all parts and decals immediately
-	for _, obj in list do
+	local function register(obj: Instance)
 		if obj:IsA("BasePart") then
-			(obj :: BasePart).Transparency = 1
-			(obj :: BasePart).CanCollide = false
+			data[obj] = {
+				Transparency = (obj :: BasePart).Transparency,
+				CanCollide = (obj :: BasePart).CanCollide,
+			}
+			table.insert(list, obj)
+
+			-->! Hide immediately if model is not yet unlocked
+			if instance:GetAttribute("Unlocked") ~= true then
+				(obj :: BasePart).Transparency = 1
+				(obj :: BasePart).CanCollide = false
+			end
 		elseif obj:IsA("Decal") or obj:IsA("Texture") then
-			(obj :: Decal).Transparency = 1
+			data[obj] = {
+				Transparency = (obj :: Decal).Transparency,
+			}
+			table.insert(list, obj)
+
+			-->! Hide immediately if model is not yet unlocked
+			if instance:GetAttribute("Unlocked") ~= true then
+				(obj :: Decal).Transparency = 1
+			end
 		end
 	end
 
-	-->! Mark as locked
-	instance:SetAttribute("Unlocked", false)
+	-->! Register existing descendants
+	register(instance)
+	for _, desc in instance:GetDescendants() do
+		register(desc)
+	end
+
+	-->! Listen for late-arriving descendants (StreamingEnabled support)
+	instance.DescendantAdded:Connect(register)
+
+	-->! Mark as locked if not already set
+	if instance:GetAttribute("Unlocked") == nil then
+		instance:SetAttribute("Unlocked", false)
+	end
 end
 
 --[[
@@ -158,11 +153,11 @@ end
 --[[
 	AppearModel – Tweens a tagged Model/Folder from hidden to its original
 	visual state with a staggered per-part delay.
-	• Transparency tweens from 1 → original.
-	• CanCollide is restored to its original value AFTER the tween finishes
-	  (so players don't collide with invisible geometry). Parts that were
-	  originally non-collidable stay non-collidable.
-	• Sets the "Unlocked" attribute to true.
+	-> Transparency tweens from 1 → original.
+	-> CanCollide is restored to its original value AFTER the tween finishes
+	   (so players don't collide with invisible geometry). Parts that were
+	   originally non-collidable stay non-collidable.
+	-> Sets the "Unlocked" attribute to true.
 ]]
 function SummonModelUtil.AppearModel(instance: Instance)
 	cancelPendingTasks(instance)
@@ -183,27 +178,42 @@ function SummonModelUtil.AppearModel(instance: Instance)
 		end
 	end
 
-	-->! Staggered tween each part back to its original transparency
-	local tasks: { thread } = {}
-	pendingTasks[instance] = tasks
+	if GeneralConfig.AnimationsOn == true then
+		-->! Staggered tween each part back to its original transparency
+		local tasks: { thread } = {}
+		pendingTasks[instance] = tasks
 
-	for i, obj in ipairs(cache.partList) do
-		local snapshot = cache.partData[obj]
-		local handle = task.delay((i - 1) * STAGGER_DELAY, function()
-			if not obj.Parent then return end
+		for i, obj in ipairs(cache.partList) do
+			local snapshot = cache.partData[obj]
+			local handle = task.delay((i - 1) * STAGGER_DELAY, function()
+				if not obj.Parent then return end
 
-			playTween(obj, { Transparency = snapshot.Transparency })
+				playTween(obj, { Transparency = snapshot.Transparency })
 
-			-->! Restore CanCollide after the tween finishes (only if originally true)
-			if obj:IsA("BasePart") and snapshot.CanCollide then
-				task.delay(TWEEN_INFO.Time, function()
-					if obj.Parent then
-						(obj :: BasePart).CanCollide = true
-					end
-				end)
+				-->! Restore CanCollide after the tween finishes (only if originally true)
+				if obj:IsA("BasePart") and snapshot.CanCollide then
+					task.delay(TWEEN_INFO.Time, function()
+						if obj.Parent then
+							(obj :: BasePart).CanCollide = snapshot.CanCollide
+						end
+					end)
+				end
+			end)
+			table.insert(tasks, handle)
+		end
+	else
+		-->! Immediately restore each part to its original state (no animation)
+		for _, obj in cache.partList do
+			local snapshot = cache.partData[obj]
+			if not snapshot then continue end
+
+			if obj:IsA("BasePart") then
+				(obj :: BasePart).Transparency = snapshot.Transparency;
+				(obj :: BasePart).CanCollide = snapshot.CanCollide :: boolean
+			elseif obj:IsA("Decal") or obj:IsA("Texture") then
+				(obj :: Decal).Transparency = snapshot.Transparency
 			end
-		end)
-		table.insert(tasks, handle)
+		end
 	end
 
 	-->! Mark as unlocked
@@ -213,9 +223,9 @@ end
 --[[
 	DisappearModel – Tweens a tagged Model/Folder back to hidden with a
 	staggered per-part delay.
-	• CanCollide is disabled immediately (prevents interaction during fade-out).
-	• Transparency tweens from current → 1.
-	• Sets the "Unlocked" attribute to false.
+	-> CanCollide is disabled immediately (prevents interaction during fade-out).
+	-> Transparency tweens from current → 1.
+	-> Sets the "Unlocked" attribute to false.
 ]]
 function SummonModelUtil.DisappearModel(instance: Instance)
 	cancelPendingTasks(instance)
@@ -226,22 +236,34 @@ function SummonModelUtil.DisappearModel(instance: Instance)
 		return
 	end
 
-	-->! Staggered tween each part to hidden
-	local tasks: { thread } = {}
-	pendingTasks[instance] = tasks
+	if GeneralConfig.AnimationsOn == true then
+		-->! Staggered tween each part to hidden
+		local tasks: { thread } = {}
+		pendingTasks[instance] = tasks
 
-	for i, obj in ipairs(cache.partList) do
-		local handle = task.delay((i - 1) * STAGGER_DELAY, function()
-			if not obj.Parent then return end
+		for i, obj in ipairs(cache.partList) do
+			local handle = task.delay((i - 1) * STAGGER_DELAY, function()
+				if not obj.Parent then return end
 
-			-->! Disable collision immediately so players can't interact during fade
+				-->! Disable collision immediately so players can't interact during fade
+				if obj:IsA("BasePart") then
+					(obj :: BasePart).CanCollide = false
+				end
+
+				playTween(obj, { Transparency = 1 })
+			end)
+			table.insert(tasks, handle)
+		end
+	else
+		-->! Immediately hide each part (no animation)
+		for _, obj in cache.partList do
 			if obj:IsA("BasePart") then
+				(obj :: BasePart).Transparency = 1
 				(obj :: BasePart).CanCollide = false
+			elseif obj:IsA("Decal") or obj:IsA("Texture") then
+				(obj :: Decal).Transparency = 1
 			end
-
-			playTween(obj, { Transparency = 1 })
-		end)
-		table.insert(tasks, handle)
+		end
 	end
 
 	-->! Mark as locked

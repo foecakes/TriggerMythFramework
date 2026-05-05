@@ -239,13 +239,17 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 
 	-->! Return cleanup function
 	return function()
-		if partData.Cleanup then
-			partData.Cleanup()
-			partData.Cleanup = nil
-		end
+		if GeneralConfig.ReplicationMode == "Server" then
+
+			if partData.Cleanup then
+				partData.Cleanup()
+				partData.Cleanup = nil
+			end
+		
 		if partData.Connection then
 			partData.Connection:Disconnect()
 			partData.Connection = nil
+			end
 		end
 	end
 end

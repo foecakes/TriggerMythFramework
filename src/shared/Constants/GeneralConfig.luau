@@ -12,6 +12,8 @@ export type GeneralConfigT = {
 	DefaultTriggerAction: string, -->! The default trigger action ("Appear" | "Disappear") when no TriggerAction attribute is found
 	TriggerPartTag: string, -->! The tag used to identify trigger parts
 	UnlockableTag: string, -->! The tag used to identify unlockable models
+	DefaultChatNormalisation: boolean -->! Whether or not chat messages should be normalised before being compared
+	
 }
 
 local GeneralConfig: GeneralConfigT = {
@@ -21,6 +23,7 @@ local GeneralConfig: GeneralConfigT = {
 	DefaultTriggerAction = "Appear", -->! The default trigger action ("Appear" | "Disappear") when no TriggerAction attribute is found
 	TriggerPartTag = "TRIGGER_PART", -->! The tag used to identify trigger parts
 	UnlockableTag = "UnlockableModel", -->! The tag used to identify unlockable models
+	DefaultChatNormalisation = false -->! Whether or not chat messages should be normalised before being compared
 }
 
 return GeneralConfig

@@ -26,6 +26,7 @@ local SetHint = require(ReplicatedStorage.Shared.Utilities.SetHintUtil)
 local SoundLib = require(ReplicatedStorage.Shared.Utilities.SoundUtil)
 local observeTag = observers.observeTag
 local ChatListenerUtil = require(ReplicatedStorage.Shared.Utilities.ChatListenerUtil)
+local ConsoleUtil = require(ReplicatedStorage.Shared.Utilities.ConsoleUtil)
 
 --//Types
 export type TriggerPartData = {
@@ -39,6 +40,7 @@ export type TriggerPartData = {
 	ClickDetector: ClickDetector?,
 	Cleanup: (() -> ())?,
 	ChatData: string?,
+	OutputData: string?,
 	ShouldNormalise: boolean?
 }
 
@@ -92,19 +94,31 @@ end
 	GeneralConfig.ReplicationMode.
 ]]
 local function processTrigger(partData: TriggerPartData)
+	-->! Break down part data
 	local triggerPart = partData.Part
 	local modelNames = parseModelNames(partData.ModelToSummon)
 	local triggerType = partData.TriggerType
 	local action = partData.TriggerAction
 	local setText = partData.SetText
 	local playSoundName = partData.PlaySound
+	local outputData = partData.OutputData
 
+	-->! Wire trigger based on type
 	if triggerType == "Touch" then
 		partData.Connection = triggerPart.Touched:Connect(function(hitPart: BasePart)
 			-->! Ensure it's a player touching the part
 			local player = Players:GetPlayerFromCharacter(hitPart.Parent)
 			if not player then return end
 
+			-->vv Output to console if output data is present vv
+			if outputData then
+				ConsoleUtil.OutputToConsole(outputData.OutputMessage
+										, outputData.OutputType
+										, outputData.OutputThrottle
+										, outputData.OutputAmount)
+			end
+			-->^^ Output to console if output data is present ^^
+			
 			executeForModels(modelNames, action, player)
 			if setText then SetHint(setText) end
 			if playSoundName then
@@ -132,6 +146,15 @@ local function processTrigger(partData: TriggerPartData)
 
 		-->! Setup click connection
 		partData.Connection = clickDetector.MouseClick:Connect(function(player: Player)
+			-->vv Output to console if output data is present vv
+			if outputData then
+				ConsoleUtil.OutputToConsole(outputData.OutputMessage
+										, outputData.OutputType
+										, outputData.OutputThrottle
+										, outputData.OutputAmount)
+			end
+			-->^^ Output to console if output data is present ^^
+
 			executeForModels(modelNames, action, player)
 			if setText then SetHint(setText) end
 			if playSoundName then
@@ -148,6 +171,15 @@ local function processTrigger(partData: TriggerPartData)
 		end)
 	elseif triggerType == "Chat" and partData.ChatData then
 		local onMatched = function(player: Player, msg: string)
+			-->vv Output to console if output data is present vv
+			if outputData then
+				ConsoleUtil.OutputToConsole(outputData.OutputMessage
+										, outputData.OutputType
+										, outputData.OutputThrottle
+										, outputData.OutputAmount)
+			end
+			-->^^ Output to console if output data is present ^^
+
 			executeForModels(modelNames, action, player)
 			if setText then SetHint(setText) end
 			if playSoundName then
@@ -162,6 +194,42 @@ local function processTrigger(partData: TriggerPartData)
 			end
 		end
 		partData.Cleanup = ChatListenerUtil.BindTrigger(partData.ChatData, onMatched, partData.ShouldNormalise )
+			
+	elseif triggerType == "ProximityPrompt" then
+		-->! Fetch proximity prompt, create if it doesn't exist
+		local proximityPrompt: ProximityPrompt = triggerPart:FindFirstChildOfClass("ProximityPrompt")
+		if not proximityPrompt then
+			local nPP: ProximityPrompt = Instance.new("ProximityPrompt")
+			nPP.Parent = triggerPart
+			proximityPrompt = nPP
+		end
+
+		-->! Setup trigger connection
+		partData.Connection = proximityPrompt.Triggered:Connect(function(player: Player)
+			-->vv Output to console if output data is present vv
+			if outputData then
+				ConsoleUtil.OutputToConsole(outputData.OutputMessage
+										, outputData.OutputType
+										, outputData.OutputThrottle
+										, outputData.OutputAmount)
+			end
+			-->^^ Output to console if output data is present ^^
+			
+			executeForModels(modelNames, action, player)
+			if setText then SetHint(setText) end
+			if playSoundName then
+				local partSound = triggerPart:FindFirstChild(playSoundName, true) :: Sound?
+				if partSound then
+					partSound:Play()
+				elseif GeneralConfig.ReplicationMode == "Server" then
+					SoundLib.PlaySFX(playSoundName)
+				else
+					TriggerService.Client.PlaySound:Fire(player, playSoundName)
+				end
+			end
+		end)
+	else
+		warn("Unsupported trigger type: " .. triggerType)
 	end
 end
 
@@ -204,11 +272,24 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 		playSound = nil
 	end
 
+	-->! Fetch chat data
 	local chatData = part:GetAttribute("ChatTrigger")
 	if chatData and type(chatData) ~= "string" then
 		chatData = nil
 	end
 
+	-->! Fetch output data
+	local outputData = {} :: { [string]: any }?
+	if part:GetAttribute("OutputMessage") and type(part:GetAttribute("OutputMessage")) == "string" then
+		outputData["OutputMessage"] = part:GetAttribute("OutputMessage")
+		outputData["OutputType"] = part:GetAttribute("OutputType")
+		outputData["OutputThrottle"] = part:GetAttribute("OutputThrottle")
+		outputData["OutputAmount"] = part:GetAttribute("OutputAmount")
+	else
+		outputData = nil
+	end
+
+	-->! Fetch and parse ShouldNormalise attribute
 	local shouldNormalise = part:GetAttribute("ShouldNormalise")
 	if shouldNormalise and type(shouldNormalise) == "string" then
 		if string.lower(shouldNormalise) == "true" then
@@ -220,11 +301,12 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 		shouldNormalise = nil
 	end
 
+	-->! Default ShouldNormalise to the configured default if not set or invalid
 	if shouldNormalise == nil then
 		shouldNormalise = GeneralConfig.DefaultChatNormalisation
 	end
 
-	-->! Build part data and wire the trigger
+	-->! Construct part data and wire the trigger
 	local partData: TriggerPartData = {
 		Part = part,
 		ModelToSummon = modelToSummon :: string,
@@ -232,12 +314,13 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 		TriggerAction = triggerAction :: string,
 		SetText = setText :: string?,
 		PlaySound = playSound :: string?,
+		ChatData = chatData :: string?,
+		OutputData = outputData :: { [string]: any }?,
 		ShouldNormalise = shouldNormalise :: boolean?,
-		ChatData = chatData :: string?
 	}
 
 
-
+	-->! Process the trigger
 	processTrigger(partData)
 
 	-->! Return cleanup function

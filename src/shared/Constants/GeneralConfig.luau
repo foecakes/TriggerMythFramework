@@ -8,22 +8,35 @@
 export type GeneralConfigT = {
 	AnimationsOn: boolean, -->! Whether or not to animate models when they appear
 	ReplicationMode: "Client" | "Server", -->! Whether to make detections & summon models on the client or server.
+	
 	DefaultTriggerType: string, -->! The default trigger type to use if no TriggerType attribute is found on a trigger part
 	DefaultTriggerAction: string, -->! The default trigger action ("Appear" | "Disappear") when no TriggerAction attribute is found
+	
 	TriggerPartTag: string, -->! The tag used to identify trigger parts
 	UnlockableTag: string, -->! The tag used to identify unlockable models
-	DefaultChatNormalisation: boolean -->! Whether or not chat messages should be normalised before being compared
 	
+	DefaultChatNormalisation: boolean, -->! Whether or not chat messages should be normalised before being compared
+	
+	DefaultOutputType: string, -->! The default output method for console messages ("print" | "warn" | "eror")
+	DefaultConsoleThrottle: number, -->! Delay in seconds between console output messages (0 = no delay)
+	DefaultConsoleAmount: number -->! Amount of times the message is output
 }
 
 local GeneralConfig: GeneralConfigT = {
 	AnimationsOn = true, -->! Whether or not to animate models when they appear
 	ReplicationMode = "Client", -->! Whether to make detections & summon models on the client or server.
+	
 	DefaultTriggerType = "Touch", -->! The default trigger type to use if no TriggerType attribute is found on a trigger part
 	DefaultTriggerAction = "Appear", -->! The default trigger action ("Appear" | "Disappear") when no TriggerAction attribute is found
+	
 	TriggerPartTag = "TRIGGER_PART", -->! The tag used to identify trigger parts
 	UnlockableTag = "UnlockableModel", -->! The tag used to identify unlockable models
-	DefaultChatNormalisation = false -->! Whether or not chat messages should be normalised before being compared
+	
+	DefaultChatNormalisation = false, -->! Whether or not chat messages should be normalised before being compared
+	
+	DefaultOutputType = "print", -->! The default output method for console messages ("print" | "warn" | "eror")
+	DefaultConsoleThrottle = 0, -->! Delay in seconds between console output messages (0 = no delay)
+	DefaultConsoleAmount = 1, -->! Amount of times the message is output
 }
 
 return GeneralConfig

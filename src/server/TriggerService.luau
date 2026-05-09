@@ -36,6 +36,7 @@ export type TriggerPartData = {
 	SetText: string?,
 	PlaySound: string?,
 	Connection: RBXScriptConnection?,
+	ClickDetector: ClickDetector?,
 	Cleanup: (() -> ())?,
 	ChatData: string?,
 	ShouldNormalise: boolean?
@@ -126,6 +127,7 @@ local function processTrigger(partData: TriggerPartData)
 			local nCD: ClickDetector = Instance.new("ClickDetector")
 			nCD.Parent = triggerPart
 			clickDetector = nCD
+			partData.ClickDetector = nCD
 		end
 
 		-->! Setup click connection
@@ -202,24 +204,25 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 		playSound = nil
 	end
 
-		local chatData = part:GetAttribute("ChatTrigger")
+	local chatData = part:GetAttribute("ChatTrigger")
 	if chatData and type(chatData) ~= "string" then
 		chatData = nil
 	end
 
 	local shouldNormalise = part:GetAttribute("ShouldNormalise")
-		if shouldNormalise and type(shouldNormalise) == "string" then
-			if string.lower(shouldNormalise) == "true" then
-				shouldNormalise = true
-			else 
-				shouldNormalise = false
-			end
-		elseif shouldNormalise and type(shouldNormalise) ~= "boolean" then
-			shouldNormalise = nil
+	if shouldNormalise and type(shouldNormalise) == "string" then
+		if string.lower(shouldNormalise) == "true" then
+			shouldNormalise = true
+		else
+			shouldNormalise = false
 		end
-		if shouldNormalise == nil then
-			shouldNormalise = GeneralConfig.DefaultChatNormalisation
-		end
+	elseif shouldNormalise and type(shouldNormalise) ~= "boolean" then
+		shouldNormalise = nil
+	end
+
+	if shouldNormalise == nil then
+		shouldNormalise = GeneralConfig.DefaultChatNormalisation
+	end
 
 	-->! Build part data and wire the trigger
 	local partData: TriggerPartData = {
@@ -239,17 +242,19 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 
 	-->! Return cleanup function
 	return function()
-		if GeneralConfig.ReplicationMode == "Server" then
+		if partData.Cleanup then
+			partData.Cleanup()
+			partData.Cleanup = nil
+		end
 
-			if partData.Cleanup then
-				partData.Cleanup()
-				partData.Cleanup = nil
-			end
-		
 		if partData.Connection then
 			partData.Connection:Disconnect()
 			partData.Connection = nil
-			end
+		end
+
+		if partData.ClickDetector then
+			partData.ClickDetector:Destroy()
+			partData.ClickDetector = nil
 		end
 	end
 end
@@ -259,10 +264,7 @@ function TriggerService:KnitInit()
 	-->! Only hide models globally if we are in Server replication mode
 	if GeneralConfig.ReplicationMode == "Server" then
 		observeTag(GeneralConfig.UnlockableTag, function(instance: Instance)
-			SummonModelUtil.InitModel(instance)
-
-			-->! No teardown needed; weak-keyed caches handle cleanup on destroy
-			return function() end
+			return SummonModelUtil.InitModel(instance)
 		end)
 	end
 end

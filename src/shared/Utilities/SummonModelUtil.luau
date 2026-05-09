@@ -53,8 +53,15 @@ setmetatable(originalData :: any, { __mode = "k" })
 	pendingTasks – Per-instance list of scheduled task handles so animations
 	can be cancelled cleanly when a new animation is requested.
 ]]
-local pendingTasks: { [Instance]: { thread } } = {}
+local pendingTasks: { [Instance]: { [any]: thread } } = {}
 setmetatable(pendingTasks :: any, { __mode = "k" })
+
+--[[
+	runningTweens – Per-part list of active tweens so overlapping animations
+	can be cancelled.
+]]
+local runningTweens: { [Instance]: Tween } = {}
+setmetatable(runningTweens :: any, { __mode = "k" })
 
 --//Helpers
 --[[
@@ -63,19 +70,45 @@ setmetatable(pendingTasks :: any, { __mode = "k" })
 ]]
 local function cancelPendingTasks(instance: Instance)
 	local tasks = pendingTasks[instance]
-	if not tasks then return end
-	for _, t in tasks do
-		task.cancel(t)
+	if tasks then
+		for _, t in tasks do
+			task.cancel(t)
+		end
+		pendingTasks[instance] = nil
 	end
-	pendingTasks[instance] = nil
+
+	-- Also cancel tweens for all parts in this model
+	local cache = originalData[instance]
+	if cache then
+		for _, obj in cache.partList do
+			local tween = runningTweens[obj]
+			if tween then
+				tween:Cancel()
+				tween:Destroy()
+				runningTweens[obj] = nil
+			end
+		end
+	end
 end
 
 --[[
 	playTween – Creates, plays and auto-destroys a single tween on `obj`.
+	Automatically cancels any existing tween on the same object.
 ]]
 local function playTween(obj: Instance, tweenGoals: { [string]: any })
+	local existing = runningTweens[obj]
+	if existing then
+		existing:Cancel()
+		existing:Destroy()
+	end
+
 	local tween = TweenService:Create(obj, TWEEN_INFO, tweenGoals)
+	runningTweens[obj] = tween
+
 	tween.Completed:Once(function()
+		if runningTweens[obj] == tween then
+			runningTweens[obj] = nil
+		end
 		tween:Destroy()
 	end)
 	tween:Play()
@@ -87,8 +120,9 @@ end
 	InitModel – Snapshots the original Transparency and CanCollide of every
 	descendant, then immediately hides the instance (Transparency = 1,
 	CanCollide = false). Should be called once per tagged instance at startup.
+	Returns a cleanup function to disconnect listeners.
 ]]
-function SummonModelUtil.InitModel(instance: Instance)
+function SummonModelUtil.InitModel(instance: Instance): () -> ()
 	local data: { [Instance]: PartSnapshot } = {}
 	local list: { Instance } = {}
 	originalData[instance] = { partData = data, partList = list }
@@ -126,11 +160,17 @@ function SummonModelUtil.InitModel(instance: Instance)
 	end
 
 	-->! Listen for late-arriving descendants (StreamingEnabled support)
-	instance.DescendantAdded:Connect(register)
+	local connection = instance.DescendantAdded:Connect(register)
 
 	-->! Mark as locked if not already set
 	if instance:GetAttribute("Unlocked") == nil then
 		instance:SetAttribute("Unlocked", false)
+	end
+
+	return function()
+		connection:Disconnect()
+		cancelPendingTasks(instance)
+		originalData[instance] = nil
 	end
 end
 
@@ -180,7 +220,7 @@ function SummonModelUtil.AppearModel(instance: Instance)
 
 	if GeneralConfig.AnimationsOn == true then
 		-->! Staggered tween each part back to its original transparency
-		local tasks: { thread } = {}
+		local tasks: { [any]: thread } = {}
 		pendingTasks[instance] = tasks
 
 		for i, obj in ipairs(cache.partList) do
@@ -192,11 +232,12 @@ function SummonModelUtil.AppearModel(instance: Instance)
 
 				-->! Restore CanCollide after the tween finishes (only if originally true)
 				if obj:IsA("BasePart") and snapshot.CanCollide then
-					task.delay(TWEEN_INFO.Time, function()
+					local colHandle = task.delay(TWEEN_INFO.Time, function()
 						if obj.Parent then
 							(obj :: BasePart).CanCollide = snapshot.CanCollide
 						end
 					end)
+					table.insert(tasks, colHandle)
 				end
 			end)
 			table.insert(tasks, handle)
@@ -238,7 +279,7 @@ function SummonModelUtil.DisappearModel(instance: Instance)
 
 	if GeneralConfig.AnimationsOn == true then
 		-->! Staggered tween each part to hidden
-		local tasks: { thread } = {}
+		local tasks: { [any]: thread } = {}
 		pendingTasks[instance] = tasks
 
 		for i, obj in ipairs(cache.partList) do

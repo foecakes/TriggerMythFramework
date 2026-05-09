@@ -26,8 +26,7 @@ function TriggerController:KnitStart()
     -->! Only hide models locally if we are in Client replication mode
     if GeneralConfig.ReplicationMode == "Client" then
         observeTag(GeneralConfig.UnlockableTag, function(instance: Instance)
-            SummonModelUtil.InitModel(instance)
-            return function() end
+            return SummonModelUtil.InitModel(instance)
         end)
     end
 

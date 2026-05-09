@@ -25,6 +25,7 @@ local SummonModelUtil = require(ReplicatedStorage.Shared.Utilities.SummonModelUt
 local SetHint = require(ReplicatedStorage.Shared.Utilities.SetHintUtil)
 local SoundLib = require(ReplicatedStorage.Shared.Utilities.SoundUtil)
 local observeTag = observers.observeTag
+local ChatListenerUtil = require(ReplicatedStorage.Shared.Utilities.ChatListenerUtil)
 
 --//Types
 export type TriggerPartData = {
@@ -35,6 +36,9 @@ export type TriggerPartData = {
 	SetText: string?,
 	PlaySound: string?,
 	Connection: RBXScriptConnection?,
+	Cleanup: (() -> ())?,
+	ChatData: string?,
+	ShouldNormalise: boolean?
 }
 
 --//Constructor
@@ -140,6 +144,22 @@ local function processTrigger(partData: TriggerPartData)
 				end
 			end
 		end)
+	elseif triggerType == "Chat" and partData.ChatData then
+		local onMatched = function(player: Player, msg: string)
+			executeForModels(modelNames, action, player)
+			if setText then SetHint(setText) end
+			if playSoundName then
+				local partSound = triggerPart:FindFirstChild(playSoundName, true) :: Sound?
+				if partSound then
+					partSound:Play()
+				elseif GeneralConfig.ReplicationMode == "Server" then
+					SoundLib.PlaySFX(playSoundName)
+				else
+					TriggerService.Client.PlaySound:Fire(player, playSoundName)
+				end
+			end
+		end
+		partData.Cleanup = ChatListenerUtil.BindTrigger(partData.ChatData, onMatched, partData.ShouldNormalise )
 	end
 end
 
@@ -182,6 +202,25 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 		playSound = nil
 	end
 
+		local chatData = part:GetAttribute("ChatTrigger")
+	if chatData and type(chatData) ~= "string" then
+		chatData = nil
+	end
+
+	local shouldNormalise = part:GetAttribute("ShouldNormalise")
+		if shouldNormalise and type(shouldNormalise) == "string" then
+			if string.lower(shouldNormalise) == "true" then
+				shouldNormalise = true
+			else 
+				shouldNormalise = false
+			end
+		elseif shouldNormalise and type(shouldNormalise) ~= "boolean" then
+			shouldNormalise = nil
+		end
+		if shouldNormalise == nil then
+			shouldNormalise = GeneralConfig.DefaultChatNormalisation
+		end
+
 	-->! Build part data and wire the trigger
 	local partData: TriggerPartData = {
 		Part = part,
@@ -190,15 +229,27 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 		TriggerAction = triggerAction :: string,
 		SetText = setText :: string?,
 		PlaySound = playSound :: string?,
+		ShouldNormalise = shouldNormalise :: boolean?,
+		ChatData = chatData :: string?
 	}
+
+
 
 	processTrigger(partData)
 
 	-->! Return cleanup function
 	return function()
+		if GeneralConfig.ReplicationMode == "Server" then
+
+			if partData.Cleanup then
+				partData.Cleanup()
+				partData.Cleanup = nil
+			end
+		
 		if partData.Connection then
 			partData.Connection:Disconnect()
 			partData.Connection = nil
+			end
 		end
 	end
 end

@@ -23,28 +23,46 @@ If you've noticed a bug or have a feature request, make one! It's generally best
 
 If you want to contribute code to the framework, here is how you can set up your local development environment:
 
-1. **Prerequisites:**
-   * [Rojo](https://rojo.space/) (for syncing files to Roblox Studio)
-   * [Wally](https://wally.run/) (for package management)
-   * A code editor like VS Code with the Luau extension.
+### 1. Prerequisites
 
-2. **Clone the repository:**
-   ```bash
-   git clone https://github.com/foecakes/TriggerMythFramework.git
-   cd TriggerMythFramework
-   ```
+A code editor like VS Code with the Luau extension is recommended. You will also need to install **Rojo** (for syncing files to Roblox Studio) and **Wally** (for package management).
 
-3. **Install dependencies:**
-   ```bash
-   wally install
-   ```
+#### Installing Rojo
+Rokit is the recommended toolchain manager for Roblox projects. To install the latest release of Rojo, run:
+```bash
+rokit add rojo-rbx/rojo
+rokit install
+```
+Once you've installed the Rojo server, you can use it to install or upgrade the Rojo plugin for Roblox Studio from the command line:
+```bash
+rojo plugin install
+```
 
-4. **Sync with Roblox Studio:**
-   Run Rojo to sync the project into a blank Roblox place:
-   ```bash
-   rojo serve
-   ```
-   Then connect via the Rojo plugin in Roblox Studio.
+#### Installing Wally
+Aftman is the recommended toolchain manager for installing Wally. Run the following in your terminal:
+```bash
+aftman init
+aftman add UpliftGames/wally
+aftman install
+```
+
+### 2. Clone the repository:
+```bash
+git clone https://github.com/foecakes/TriggerMythFramework.git
+cd TriggerMythFramework
+```
+
+### 3. Install dependencies:
+```bash
+wally install
+```
+
+### 4. Sync with Roblox Studio:
+Run Rojo to sync the project into a blank Roblox place:
+```bash
+rojo serve
+```
+Then connect via the Rojo plugin in Roblox Studio.
 
 ## Code Style & Guidelines
 

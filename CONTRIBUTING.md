@@ -2,6 +2,10 @@
 
 First off, thank you for considering contributing to the Trigger Myth Framework! It's people like you that make this framework a great tool for the Roblox Myth community.
 
+## Code of Conduct
+
+All of its projects adhere to the Contributor Covenant Code of Conduct. When participating, you are expected to honor this code.
+
 ## Where do I go from here?
 
 If you've noticed a bug or have a feature request, make one! It's generally best if you get confirmation of your bug or approval for your feature request before starting to code.

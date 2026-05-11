@@ -25,7 +25,7 @@ If you want to contribute code to the framework, here is how you can set up your
 
 ### 1. Prerequisites
 
-A code editor like VS Code with the Luau extension is recommended. You will also need to install **Rojo** (for syncing files to Roblox Studio) and **Wally** (for package management).
+A code editor like VS Code with the [Luau LSP extension](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.luau-lsp) is recommended. You will also need to install **Rojo** (for syncing files to Roblox Studio) and **Wally** (for package management).
 
 #### Installing Rojo
 Rokit is the recommended toolchain manager for Roblox projects. To install the latest release of Rojo, run:
@@ -81,6 +81,10 @@ Then connect via the Rojo plugin in Roblox Studio.
 3. **Commit your changes** with a descriptive commit message.
 4. **Push your branch** to your fork or the main repository.
 5. **Open a Pull Request** against the `main` branch. Provide a clear description of the problem you're solving and how you solved it.
+
+> **⚠️ WARNING: Security & 3rd-Party Branches**
+> Please be extremely careful when downloading, testing, or reviewing branches made by 3rd parties. Always review the code before executing it in your local environment. 
+> **Any attempts at including malicious code in branches, forks, or pull requests will result in an immediate ban and blacklist from the Stop Killing Myths organization.**
 
 ## License & Forking
 

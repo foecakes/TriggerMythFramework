@@ -32,6 +32,7 @@ Before building, it's important to understand the two main pieces of this framew
 A Trigger is simply a normal Roblox Part that waits for a player to interact with it. You can define *how* the player interacts with it:
 - **Touch (`TriggerType = "Touch"`):** Activates as soon as a player's character physically collides with the trigger part.
 - **Click (`TriggerType = "Click"`):** The framework automatically adds a `ClickDetector` to the part. The player must click the part with their mouse.
+- **ProximityPrompt (`TriggerType = "ProximityPrompt"`):** The framework automatically adds a `ProximityPrompt` to the part. The player must hold down the interact key when near the part.
 - **Chat (`TriggerType = "Chat"`):** Listens to what players say in chat. If they say the exact phrase (defined by the `ChatTrigger` attribute), the event activates.
 
 ### 2. Trigger Actions (The "Effect")

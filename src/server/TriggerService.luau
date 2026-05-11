@@ -159,6 +159,31 @@ local function processTrigger(partData: TriggerPartData)
 			end
 		end
 		partData.Cleanup = ChatListenerUtil.BindTrigger(partData.ChatData, onMatched, partData.ShouldNormalise )
+	elseif triggerType == "ProximityPrompt" then
+		-->! Fetch proximity prompt, create if it doesn't exist
+		local proximityPrompt: ProximityPrompt = triggerPart:FindFirstChildOfClass("ProximityPrompt")
+		if not proximityPrompt then
+			local nPP: ProximityPrompt = Instance.new("ProximityPrompt")
+			nPP.Parent = triggerPart
+			proximityPrompt = nPP
+		end
+
+		-->! Setup trigger connection
+		partData.Connection = proximityPrompt.Triggered:Connect(function(player: Player)
+			executeForModels(modelNames, action, player)
+			if setHintText then SetHint(setHintText) end
+			if consoleOutput then ConsoleUtil.OutputToConsole(consoleOutput, consoleOutputType, consoleThrottle, consoleAmount) end
+			if playSoundName then
+				local partSound = triggerPart:FindFirstChild(playSoundName, true) :: Sound?
+				if partSound then
+					partSound:Play()
+				elseif GeneralConfig.Global_ReplicationMode == "Server" then
+					SoundLib.PlaySFX(playSoundName)
+				else
+					TriggerService.Client.PlaySound:Fire(player, playSoundName)
+				end
+			end
+		end)
 	end
 end
 

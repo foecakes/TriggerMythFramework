@@ -40,7 +40,7 @@
     the CollectionService tag "TRIGGER_PART" (or your GeneralConfig.Trigger_PartTag).
     Then set the following ATTRIBUTES on the part:
     - ModelToSummon (string): REQUIRED. Must match the Name of a tagged Model/Folder. Use commas to target multiple (e.g., "ModelA, ModelB").
-    - TriggerType (string): OPTIONAL. "Touch" or "Click". Defaults to GeneralConfig.Trigger_DefaultType.
+    - TriggerType (string): OPTIONAL. "Touch", "Click", "ProximityPrompt", or "Chat". Defaults to GeneralConfig.Trigger_DefaultType.
     - TriggerAction (string): OPTIONAL. "Appear" or "Disappear". Defaults to GeneralConfig.Trigger_DefaultAction.
     - SetHint (string): OPTIONAL. When set, displays a Hint with the given text when the trigger fires.
     - PlaySound (string): OPTIONAL. Name of a Sound in SoundService to play when the trigger fires.

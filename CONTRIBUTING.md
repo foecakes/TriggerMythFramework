@@ -4,7 +4,7 @@ First off, thank you for considering contributing to the Trigger Myth Framework!
 
 ## Code of Conduct
 
-All of its projects adhere to the Contributor Covenant Code of Conduct. When participating, you are expected to honor this code.
+All of its projects adhere to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). When participating, you are expected to honor this code.
 
 ## Where do I go from here?
 

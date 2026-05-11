@@ -4,7 +4,7 @@ First off, thank you for considering contributing to the Trigger Myth Framework!
 
 ## Code of Conduct
 
-All of its projects adhere to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). When participating, you are expected to honor this code.
+All of our projects adhere to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). When participating, you are expected to honor this code.
 
 ## Where do I go from here?
 
@@ -63,5 +63,9 @@ If you want to contribute code to the framework, here is how you can set up your
 3. **Commit your changes** with a descriptive commit message.
 4. **Push your branch** to your fork or the main repository.
 5. **Open a Pull Request** against the `main` branch. Provide a clear description of the problem you're solving and how you solved it.
+
+## License & Forking
+
+This project is open-source and released under the Apache 2.0 License. Anyone is completely free and encouraged to fork this repository, modify the code, and use it in their own projects in accordance with the license!
 
 Thank you for contributing!

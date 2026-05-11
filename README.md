@@ -71,8 +71,10 @@ To tell the game *what* this trigger should do, we use **Attributes**. Select yo
 
 | Attribute Name | Type | What it does |
 |---|---|---|
-| `ModelToSummon` | **String** | The exact, unique Name of the `UnlockableModel` you want to affect. You can trigger multiple at once by using commas (e.g., `ModelA, ModelB`). |
-| `TriggerType` | **String** | How the player activates it. Can be `"Touch"`, `"Click"`, or `"Chat"`. (Defaults to Touch). |
+| `ModelToSummon` | **String** | OPTIONAL. The exact, unique Name of the `UnlockableModel` you want to affect. You can trigger multiple at once by using commas (e.g., `ModelA, ModelB`). |
+| `ModelsToAppear` | **String** | OPTIONAL. Comma-separated names of models to show. |
+| `ModelsToDisappear` | **String** | OPTIONAL. Comma-separated names of models to hide. |
+| `TriggerType` | **String** | How the player activates it. Can be `"Touch"`, `"Click"`, `"ProximityPrompt"`, or `"Chat"`. (Defaults to Touch). |
 | `TriggerAction` | **String** | `"Appear"` (fades the model in) or `"Disappear"` (fades it out). |
 | `SetHint` | **String** | Text to display as a hint at the top of the screen when triggered. |
 | `PlaySound` | **String** | The name of a Sound to play. (If the sound is inside the trigger part, it plays from there. Otherwise, it searches `SoundService`). |
@@ -86,6 +88,27 @@ To tell the game *what* this trigger should do, we use **Attributes**. Select yo
 ### Chaining Triggers
 Place a `TRIGGER_PART` *inside* an `UnlockableModel`. 
 When the game starts, that second trigger is hidden along with the model. Once the player activates the first trigger, the model appears, bringing the second trigger into the world. This allows you to easily chain events!
+
+---
+
+## Advanced Triggers: Multiple Actions
+
+You can make multiple models appear and disappear on a **SINGLE** trigger! There are two ways to do this:
+
+### Method A: Advanced Attributes
+Instead of (or in addition to) `ModelToSummon`, use these attributes:
+- **`ModelsToAppear`**: A comma-separated list of model names to show.
+- **`ModelsToDisappear`**: A comma-separated list of model names to hide.
+
+*Example: `ModelsToAppear = "Bridge, Gate"`*
+
+### Method B: Object Values (Recommended)
+This is the most intuitive way to link models in Roblox Studio:
+1.  Inside your trigger part, create an **`ObjectValue`**.
+2.  Name it exactly **`AppearModel`** or **`DisappearModel`**.
+3.  Set its **`Value`** property to the target Model/Folder in your Workspace.
+
+*Note: The framework searches all descendants of the trigger, so you can organize these values inside Folders for better organization!*
 
 ---
 
@@ -113,8 +136,8 @@ local SummonModelUtil = require(ReplicatedStorage.Shared.Utilities.SummonModelUt
 #### `SummonModelUtil.Summon(modelName: string): Instance?`
 Finds an `UnlockableModel` by name and forces it to appear using the framework's standard staggered animation. Skips execution if the model is already unlocked. Returns the Instance if found.
 
-#### `SummonModelUtil.ExecuteAction(modelName: string, action: string): Instance?`
-Forces a specific action on a model. Valid actions are `"Appear"` and `"Disappear"`. Returns the Instance if found.
+#### `SummonModelUtil.ExecuteAction(target: string | Instance, action: string): Instance?`
+Forces a specific action on a target (either its Name or the Instance itself). Valid actions are `"Appear"` and `"Disappear"`. Returns the Instance if found and validly tagged.
 
 #### `SummonModelUtil.InitModel(instance: Instance)`
 *(Internal)* Caches the `Transparency` and `CanCollide` properties of all descendant parts, then immediately turns the model invisible. Connects observers for `StreamingEnabled` compatibility.

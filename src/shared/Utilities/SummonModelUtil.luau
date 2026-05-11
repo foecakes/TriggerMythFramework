@@ -334,18 +334,32 @@ end
 
 --[[
 	ExecuteAction – High-level method that finds an "UnlockableModel"-tagged
-	instance by name and executes the given action ("Appear" or "Disappear").
+	instance by name or direct reference and executes the given action
+	("Appear" or "Disappear").
 	Skips if the instance is already in the target state.
-	Returns the instance if found, nil otherwise.
+	Returns the instance if found/valid, nil otherwise.
 ]]
-function SummonModelUtil.ExecuteAction(modelName: string, action: string): Instance?
-	assert(modelName, "SummonModelUtil.ExecuteAction - modelName expected, got nil")
+function SummonModelUtil.ExecuteAction(modelNameOrInstance: string | Instance, action: string): Instance?
+	assert(modelNameOrInstance, "SummonModelUtil.ExecuteAction - modelNameOrInstance expected, got nil")
 	assert(action, "SummonModelUtil.ExecuteAction - action expected, got nil")
 
-	-->! Find the tagged instance by name
-	local instance = SummonModelUtil.FindUnlockable(modelName)
+	local instance: Instance?
+	if type(modelNameOrInstance) == "string" then
+		-->! Find the tagged instance by name
+		instance = SummonModelUtil.FindUnlockable(modelNameOrInstance)
+	else
+		-->! Use the instance directly if it's already an Instance
+		instance = modelNameOrInstance
+		if not CollectionService:HasTag(instance, UNLOCKABLE_TAG) then
+			warn("SummonModelUtil.ExecuteAction - Instance provided is not tagged with " .. UNLOCKABLE_TAG)
+			return nil
+		end
+	end
+
 	if not instance then
-		warn("SummonModelUtil.ExecuteAction - No unlockable found with name: " .. modelName)
+		if type(modelNameOrInstance) == "string" then
+			warn("SummonModelUtil.ExecuteAction - No unlockable found with name: " .. modelNameOrInstance)
+		end
 		return nil
 	end
 

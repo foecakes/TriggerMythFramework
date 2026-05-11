@@ -35,6 +35,10 @@ export type TriggerPartData = {
 	ModelToSummon: string?,
 	TriggerType: string,
 	TriggerAction: string,
+	ModelsToAppear: { string }?,
+	ModelsToDisappear: { string }?,
+	AppearInstances: { Instance }?,
+	DisappearInstances: { Instance }?,
 	SetHint: string?,
 	PlaySound: string?,
 	Connection: RBXScriptConnection?,
@@ -80,15 +84,18 @@ end
 	comma-separated list, either on the server or by signalling the client.
 ]]
 -->! Distributes the action either globally (server mode) or locally via network signals (client mode)
-local function executeForModels(modelNames: { string }, action: string, player: Player?)
+local function executeForModels(targets: { string | Instance }, action: string, player: Player?)
 	local isServerMode = GeneralConfig.Global_ReplicationMode == "Server"
 
-	for _, modelName in modelNames do
+	for _, target in targets do
 		if isServerMode then
-			SummonModelUtil.ExecuteAction(modelName, action)
+			SummonModelUtil.ExecuteAction(target, action)
 		else
 			if player then
-				TriggerService.Client.SummonModel:Fire(player, modelName, action)
+				-->! If target is an Instance, send its name for client-side lookup
+				-->! (Most robust for replication/streaming safety)
+				local name = if typeof(target) == "Instance" then target.Name else target
+				TriggerService.Client.SummonModel:Fire(player, name, action)
 			end
 		end
 	end
@@ -115,6 +122,48 @@ local function processTrigger(partData: TriggerPartData)
 	local consoleAmount = partData.ConsoleAmount
 
 	-->! Wire trigger based on type
+	local function runActions(player: Player?)
+		-->! 1. Original attribute-based trigger
+		if #modelNames > 0 then
+			executeForModels(modelNames, action, player)
+		end
+
+		-->! 2. Explicit appear attributes
+		if partData.ModelsToAppear and #partData.ModelsToAppear > 0 then
+			executeForModels(partData.ModelsToAppear, "Appear", player)
+		end
+
+		-->! 3. Explicit disappear attributes
+		if partData.ModelsToDisappear and #partData.ModelsToDisappear > 0 then
+			executeForModels(partData.ModelsToDisappear, "Disappear", player)
+		end
+
+		-->! 4. ObjectValue instances
+		if partData.AppearInstances and #partData.AppearInstances > 0 then
+			executeForModels(partData.AppearInstances, "Appear", player)
+		end
+
+		if partData.DisappearInstances and #partData.DisappearInstances > 0 then
+			executeForModels(partData.DisappearInstances, "Disappear", player)
+		end
+
+		if setHintText then SetHint(setHintText) end
+		if consoleOutput then ConsoleUtil.OutputToConsole(consoleOutput, consoleOutputType, consoleThrottle, consoleAmount) end
+		
+		if playSoundName then
+			-->! Check for spatial audio inside the part before falling back to SoundService
+			local partSound = triggerPart:FindFirstChild(playSoundName, true) :: Sound?
+			if partSound then
+				partSound:Play()
+			elseif GeneralConfig.Global_ReplicationMode == "Server" then
+				SoundLib.PlaySFX(playSoundName)
+			else
+				TriggerService.Client.PlaySound:Fire(player, playSoundName)
+			end
+		end
+	end
+
+	-->! Wire trigger based on type
 	if triggerType == "Touch" then
 		partData.Connection = triggerPart.Touched:Connect(function(hitPart: BasePart)
 			-->! Ensure the hit part belongs to an actual player character
@@ -130,20 +179,7 @@ local function processTrigger(partData: TriggerPartData)
 			end
 			-->^^ Output to console if output data is present ^^
 			
-			executeForModels(modelNames, action, player)
-			if setHintText then SetHint(setHintText) end
-			if consoleOutput then ConsoleUtil.OutputToConsole(consoleOutput, consoleOutputType, consoleThrottle, consoleAmount) end
-			if playSoundName then
-				-->! Check for spatial audio inside the part before falling back to SoundService
-				local partSound = triggerPart:FindFirstChild(playSoundName, true) :: Sound?
-				if partSound then
-					partSound:Play()
-				elseif GeneralConfig.Global_ReplicationMode == "Server" then
-					SoundLib.PlaySFX(playSoundName)
-				else
-					TriggerService.Client.PlaySound:Fire(player, playSoundName)
-				end
-			end
+			runActions(player)
 		end)
 
 	elseif triggerType == "Click" then
@@ -167,19 +203,7 @@ local function processTrigger(partData: TriggerPartData)
 			end
 			-->^^ Output to console if output data is present ^^
 
-			executeForModels(modelNames, action, player)
-			if setHintText then SetHint(setHintText) end
-			if consoleOutput then ConsoleUtil.OutputToConsole(consoleOutput, consoleOutputType, consoleThrottle, consoleAmount) end
-			if playSoundName then
-				local partSound = triggerPart:FindFirstChild(playSoundName, true) :: Sound?
-				if partSound then
-					partSound:Play()
-				elseif GeneralConfig.Global_ReplicationMode == "Server" then
-					SoundLib.PlaySFX(playSoundName)
-				else
-					TriggerService.Client.PlaySound:Fire(player, playSoundName)
-				end
-			end
+			runActions(player)
 		end)
 	elseif triggerType == "Chat" and partData.ChatData then
 		local onMatched = function(player: Player, msg: string)
@@ -192,19 +216,7 @@ local function processTrigger(partData: TriggerPartData)
 			end
 			-->^^ Output to console if output data is present ^^
 
-			executeForModels(modelNames, action, player)
-			if setHintText then SetHint(setHintText) end
-			if consoleOutput then ConsoleUtil.OutputToConsole(consoleOutput, consoleOutputType, consoleThrottle, consoleAmount) end
-			if playSoundName then
-				local partSound = triggerPart:FindFirstChild(playSoundName, true) :: Sound?
-				if partSound then
-					partSound:Play()
-				elseif GeneralConfig.Global_ReplicationMode == "Server" then
-					SoundLib.PlaySFX(playSoundName)
-				else
-					TriggerService.Client.PlaySound:Fire(player, playSoundName)
-				end
-			end
+			runActions(player)
 		end
 		partData.Cleanup = ChatListenerUtil.BindTrigger(partData.ChatData, onMatched, partData.ShouldNormalise )
 	elseif triggerType == "ProximityPrompt" then
@@ -218,19 +230,7 @@ local function processTrigger(partData: TriggerPartData)
 
 		-->! Setup trigger connection
 		partData.Connection = proximityPrompt.Triggered:Connect(function(player: Player)
-			executeForModels(modelNames, action, player)
-			if setHintText then SetHint(setHintText) end
-			if consoleOutput then ConsoleUtil.OutputToConsole(consoleOutput, consoleOutputType, consoleThrottle, consoleAmount) end
-			if playSoundName then
-				local partSound = triggerPart:FindFirstChild(playSoundName, true) :: Sound?
-				if partSound then
-					partSound:Play()
-				elseif GeneralConfig.Global_ReplicationMode == "Server" then
-					SoundLib.PlaySFX(playSoundName)
-				else
-					TriggerService.Client.PlaySound:Fire(player, playSoundName)
-				end
-			end
+			runActions(player)
 		end)
 	end
 end
@@ -261,6 +261,25 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 	local triggerAction = part:GetAttribute("TriggerAction")
 	if not triggerAction or type(triggerAction) ~= "string" then
 		triggerAction = GeneralConfig.Trigger_DefaultAction
+	end
+
+	local modelsToAppearAttr = part:GetAttribute("ModelsToAppear")
+	local modelsToAppearNames = if type(modelsToAppearAttr) == "string" then parseModelNames(modelsToAppearAttr) else nil
+
+	local modelsToDisappearAttr = part:GetAttribute("ModelsToDisappear")
+	local modelsToDisappearNames = if type(modelsToDisappearAttr) == "string" then parseModelNames(modelsToDisappearAttr) else nil
+
+	-->! Find ObjectValue descendants for Appear/Disappear actions
+	local appearInstances: { Instance } = {}
+	local disappearInstances: { Instance } = {}
+	for _, desc in part:GetDescendants() do
+		if desc:IsA("ObjectValue") then
+			if desc.Name == "AppearModel" and desc.Value then
+				table.insert(appearInstances, desc.Value)
+			elseif desc.Name == "DisappearModel" and desc.Value then
+				table.insert(disappearInstances, desc.Value)
+			end
+		end
 	end
 
 	local setHintText = part:GetAttribute("SetHint")
@@ -331,6 +350,10 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 		ModelToSummon = modelToSummon :: string?,
 		TriggerType = triggerType :: string,
 		TriggerAction = triggerAction :: string,
+		ModelsToAppear = modelsToAppearNames,
+		ModelsToDisappear = modelsToDisappearNames,
+		AppearInstances = appearInstances,
+		DisappearInstances = disappearInstances,
 		SetHint = setHintText :: string?,
 		PlaySound = playSound :: string?,
 		ChatData = chatData :: string?,

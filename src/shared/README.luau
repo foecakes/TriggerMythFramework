@@ -72,6 +72,24 @@
 
     ---------------------------------------------------------------------------
 
+    ADVANCED TRIGGERS: MULTIPLE ACTIONS
+    
+    You can make multiple models appear and disappear on a SINGLE trigger!
+    There are two ways to do this:
+
+    METHOD A: ADVANCED ATTRIBUTES
+    - ModelsToAppear (String): Comma-separated names of models to show.
+    - ModelsToDisappear (String): Comma-separated names of models to hide.
+    (e.g. ModelsToAppear = "Bridge, Gate")
+
+    METHOD B: OBJECT VALUES (Recommended)
+    1. Inside your trigger part, create an "ObjectValue".
+    2. Name it "AppearModel" or "DisappearModel".
+    3. Set its "Value" property to the target Model/Folder in your Workspace.
+    *Note: The framework searches all descendants, so you can nest these in Folders!*
+
+    ---------------------------------------------------------------------------
+
     TECHNICAL DOCUMENTATION (For Scripters)
 
     ARCHITECTURE OVERVIEW

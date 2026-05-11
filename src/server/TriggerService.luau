@@ -38,6 +38,7 @@ export type TriggerPartData = {
 	SetHint: string?,
 	PlaySound: string?,
 	Connection: RBXScriptConnection?,
+	ClickDetector: ClickDetector?,
 	Cleanup: (() -> ())?,
 	ChatData: string?,
 	ShouldNormalise: boolean?,
@@ -85,6 +86,7 @@ local function executeForModels(modelNames: { string }, action: string, player: 
 end
 
 local function processTrigger(partData: TriggerPartData)
+	-->! Break down part data
 	local triggerPart = partData.Part
 	local modelNames = partData.ModelToSummon and parseModelNames(partData.ModelToSummon) or {}
 	local triggerType = partData.TriggerType
@@ -96,12 +98,22 @@ local function processTrigger(partData: TriggerPartData)
 	local consoleThrottle = partData.ConsoleThrottle
 	local consoleAmount = partData.ConsoleAmount
 
+	-->! Wire trigger based on type
 	if triggerType == "Touch" then
 		partData.Connection = triggerPart.Touched:Connect(function(hitPart: BasePart)
 			-->! Ensure the hit part belongs to an actual player character
 			local player = Players:GetPlayerFromCharacter(hitPart.Parent)
 			if not player then return end
 
+			-->vv Output to console if output data is present vv
+			if outputData then
+				ConsoleUtil.OutputToConsole(outputData.OutputMessage
+										, outputData.OutputType
+										, outputData.OutputThrottle
+										, outputData.OutputAmount)
+			end
+			-->^^ Output to console if output data is present ^^
+			
 			executeForModels(modelNames, action, player)
 			if setHintText then SetHint(setHintText) end
 			if consoleOutput then ConsoleUtil.OutputToConsole(consoleOutput, consoleOutputType, consoleThrottle, consoleAmount) end
@@ -125,9 +137,19 @@ local function processTrigger(partData: TriggerPartData)
 			local nCD: ClickDetector = Instance.new("ClickDetector")
 			nCD.Parent = triggerPart
 			clickDetector = nCD
+			partData.ClickDetector = nCD
 		end
 
 		partData.Connection = clickDetector.MouseClick:Connect(function(player: Player)
+			-->vv Output to console if output data is present vv
+			if outputData then
+				ConsoleUtil.OutputToConsole(outputData.OutputMessage
+										, outputData.OutputType
+										, outputData.OutputThrottle
+										, outputData.OutputAmount)
+			end
+			-->^^ Output to console if output data is present ^^
+
 			executeForModels(modelNames, action, player)
 			if setHintText then SetHint(setHintText) end
 			if consoleOutput then ConsoleUtil.OutputToConsole(consoleOutput, consoleOutputType, consoleThrottle, consoleAmount) end
@@ -144,6 +166,15 @@ local function processTrigger(partData: TriggerPartData)
 		end)
 	elseif triggerType == "Chat" and partData.ChatData then
 		local onMatched = function(player: Player, msg: string)
+			-->vv Output to console if output data is present vv
+			if outputData then
+				ConsoleUtil.OutputToConsole(outputData.OutputMessage
+										, outputData.OutputType
+										, outputData.OutputThrottle
+										, outputData.OutputAmount)
+			end
+			-->^^ Output to console if output data is present ^^
+
 			executeForModels(modelNames, action, player)
 			if setHintText then SetHint(setHintText) end
 			if consoleOutput then ConsoleUtil.OutputToConsole(consoleOutput, consoleOutputType, consoleThrottle, consoleAmount) end
@@ -243,6 +274,18 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 		chatData = nil
 	end
 
+	-->! Fetch output data
+	local outputData = {} :: { [string]: any }?
+	if part:GetAttribute("OutputMessage") and type(part:GetAttribute("OutputMessage")) == "string" then
+		outputData["OutputMessage"] = part:GetAttribute("OutputMessage")
+		outputData["OutputType"] = part:GetAttribute("OutputType")
+		outputData["OutputThrottle"] = part:GetAttribute("OutputThrottle")
+		outputData["OutputAmount"] = part:GetAttribute("OutputAmount")
+	else
+		outputData = nil
+	end
+
+	-->! Fetch and parse ShouldNormalise attribute
 	local shouldNormalise = part:GetAttribute("ShouldNormalise")
 	if shouldNormalise and type(shouldNormalise) == "string" then
 		if string.lower(shouldNormalise) == "true" then
@@ -264,6 +307,8 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 		TriggerAction = triggerAction :: string,
 		SetHint = setHintText :: string?,
 		PlaySound = playSound :: string?,
+		ChatData = chatData :: string?,
+		OutputData = outputData :: { [string]: any }?,
 		ShouldNormalise = shouldNormalise :: boolean?,
 		ChatData = chatData :: string?,
 		ConsoleOutput = consoleOutput :: string?,

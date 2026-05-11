@@ -56,19 +56,51 @@ setmetatable(originalData :: any, { __mode = "k" })
 local pendingTasks: { [Instance]: { thread } } = {}
 setmetatable(pendingTasks :: any, { __mode = "k" })
 
+--[[
+	runningTweens – Per-part list of active tweens so overlapping animations
+	can be cancelled.
+]]
+local runningTweens: { [Instance]: Tween } = {}
+setmetatable(runningTweens :: any, { __mode = "k" })
+
 --//Helpers
 local function cancelPendingTasks(instance: Instance)
 	local tasks = pendingTasks[instance]
-	if not tasks then return end
-	for _, t in tasks do
-		task.cancel(t)
+	if tasks then
+		for _, t in tasks do
+			task.cancel(t)
+		end
+		pendingTasks[instance] = nil
 	end
-	pendingTasks[instance] = nil
+
+	-- Also cancel tweens for all parts in this model
+	local cache = originalData[instance]
+	if cache then
+		for _, obj in cache.partList do
+			local tween = runningTweens[obj]
+			if tween then
+				tween:Cancel()
+				tween:Destroy()
+				runningTweens[obj] = nil
+			end
+		end
+	end
 end
 
 local function playTween(obj: Instance, tweenGoals: { [string]: any })
+	local existing = runningTweens[obj]
+	if existing then
+		existing:Cancel()
+		existing:Destroy()
+	end
+
 	local tween = TweenService:Create(obj, TWEEN_INFO, tweenGoals)
+	runningTweens[obj] = tween
+
 	tween.Completed:Once(function()
+		if runningTweens[obj] == tween then
+			runningTweens[obj] = nil
+		end
 		tween:Destroy()
 	end)
 	tween:Play()
@@ -114,6 +146,12 @@ function SummonModelUtil.InitModel(instance: Instance)
 
 	if instance:GetAttribute("Unlocked") == nil then
 		instance:SetAttribute("Unlocked", false)
+	end
+
+	return function()
+		connection:Disconnect()
+		cancelPendingTasks(instance)
+		originalData[instance] = nil
 	end
 end
 
@@ -163,11 +201,12 @@ function SummonModelUtil.AppearModel(instance: Instance)
 				-->! Delay restoring collisions until the visual tween finishes
 				-->! so players do not hit invisible geometry during the fade in
 				if obj:IsA("BasePart") and snapshot.CanCollide then
-					task.delay(TWEEN_INFO.Time, function()
+					local colHandle = task.delay(TWEEN_INFO.Time, function()
 						if obj.Parent then
 							(obj :: BasePart).CanCollide = snapshot.CanCollide
 						end
 					end)
+					table.insert(tasks, colHandle)
 				end
 			end)
 			table.insert(tasks, handle)

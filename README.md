@@ -128,4 +128,19 @@ instance:GetAttributeChangedSignal("Unlocked"):Connect(function()
     -- Inject custom state logic here
 end)
 ```
+Workspace
+├── SecretRoom                  (Model, tagged "UnlockableModel")
+│   ├── Floor                   (Part)
+│   ├── Wall1                   (Part)
+│   ├── Wall2                   (Part)
+│   └── Painting                (Part)
+│       └── FrontDecal          (Decal)
+│
+└── TriggerZone                 (Part, tagged "TRIGGER_PART")
+        Attributes:
+            ModelToSummon = "SecretRoom"
+            TriggerType   = "Touch"
+```
+
+When a player walks into TriggerZone, "SecretRoom" fades in with a staggered animation and becomes collidable.
 

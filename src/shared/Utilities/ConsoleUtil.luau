@@ -1,6 +1,6 @@
 --[[
 	CONSOLE TRIGGER ACTION
-	Author: @FoeCakes
+	Author: @Kiceba
 
 	DESCRIPTION:
 		A trigger action that outputs formatted messages to the Roblox console

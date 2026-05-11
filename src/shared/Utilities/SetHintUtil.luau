@@ -1,5 +1,5 @@
 --[[
-	SET HINT UTILITY
+	SET HINT UTILITY - DOCUMENTATION & GUIDE
 	Author: @FoeCakes
 
 	DESCRIPTION:
@@ -8,15 +8,15 @@
 		the name "ActiveHint". Subsequent calls reuse the existing Hint.
 
 	USAGE:
-		local SetHint = require(path.to.SetHintUtil)
-		SetHint("Hello, world!")
+		local SetHint = require(path.to.SetHintUtil) -->! Requiring the utility function
+		SetHint("Hello, world!") -->! Calling it
 
 	PARAMETERS:
-		nText (string): The text to display in the Hint.
+		nText (string) -- The text to display in the Hint.
 
 	NOTES:
-		Only one Hint is maintained at a time since a single instance handles all text.
-		Passing a non-string value will raise an error.
+		- Only one Hint ("ActiveHint") is maintained at a time. (No need for multiple hints as you can't manipulate anything else other than the text anyways)
+		- Passing a non-string value will raise an error.
 ]]
 
 --!strict
@@ -24,6 +24,7 @@ return function(nText: string)
     assert(nText and type(nText) == "string",
         "HintUtil: Expected a string as the first argument. Received " .. typeof(nText))
     
+	-->! Check to see if there is currently an active hint
     local activeHint: Hint? = workspace:FindFirstChild("ActiveHint")
     if not activeHint then
         local nHint = Instance.new("Hint")
@@ -33,5 +34,6 @@ return function(nText: string)
         activeHint = nHint
     end
 
+	-->! Update text
     (activeHint :: Hint).Text = nText
 end

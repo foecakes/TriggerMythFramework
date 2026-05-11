@@ -1,18 +1,4 @@
 --!strict
---[[
-	TRIGGER CONTROLLER
-	Author: @FoeCakes
-
-	DESCRIPTION:
-		Client-side Knit controller handling model visibility.
-
-	USAGE:
-		Managed by Knit framework. Should not be required manually.
-
-	NOTES:
-		Depends on Global_ReplicationMode in GeneralConfig. If set to Client, this handles initial model hiding.
-]]
-
 --//Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -24,7 +10,7 @@ local SummonModelUtil = require(ReplicatedStorage.Shared.Utilities.SummonModelUt
 local SoundLib = require(ReplicatedStorage.Shared.Utilities.SoundUtil)
 
 local observeTag = observers.observeTag
-local TriggerService
+local TriggerService -->! Initialized in knitInit
 
 --//Constructor
 local TriggerController = knit.CreateController {
@@ -37,7 +23,7 @@ function TriggerController:KnitInit()
 end
 
 function TriggerController:KnitStart()
-    -->! Only hide models locally if we are in Client replication mode, otherwise the server handles it globally
+    -->! Only hide models locally if we are in Client replication mode
     if GeneralConfig.Global_ReplicationMode == "Client" then
         observeTag(GeneralConfig.Model_UnlockableTag, function(instance: Instance)
             SummonModelUtil.InitModel(instance)
@@ -45,10 +31,12 @@ function TriggerController:KnitStart()
         end)
     end
 
+    -->! Connect the client trigger action function
     TriggerService.SummonModel:Connect(function(modelName, action)
         SummonModelUtil.ExecuteAction(modelName, action)
     end)
 
+    -->! Connect the client play sound function
     TriggerService.PlaySound:Connect(function(soundName)
         SoundLib.PlaySFX(soundName)
     end)

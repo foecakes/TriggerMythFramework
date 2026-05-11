@@ -1,16 +1,16 @@
 --[[
-	TRIGGER SERVICE
+	TriggerService
 	Author: @FoeCakes
 
-	DESCRIPTION:
-		Knit service that observes interactive parts and wires them to summon or hide models.
-		Listens for Touch, Click, or Chat events based on part attributes.
+	Knit service that observes trigger parts (tagged with GeneralConfig.TriggerPartTag)
+	and wires them to summon/reveal "UnlockableModel"-tagged Models and Folders.
 
-	USAGE:
-		Managed by Knit framework. Trigger parts must be tagged and configured via attributes.
-
-	NOTES:
-		Other optional attributes: "ModelToSummon", "TriggerType", "SetHint", "PlaySound".
+	Trigger parts require:
+		-> A "ModelToSummon" string attribute (must match the Name of a tagged instance).
+		-> An optional "TriggerType" string attribute ("Touch" | "Click"). Falls back to
+		  GeneralConfig.DefaultTriggerType when absent.
+		-> An optional "SetText" string attribute. When present, sets a Hint in the
+		   workspace with the given text when the trigger fires.
 ]]
 
 --//Services
@@ -42,6 +42,7 @@ export type TriggerPartData = {
 	Cleanup: (() -> ())?,
 	ChatData: string?,
 	ShouldNormalise: boolean?,
+	OutputData: { [string]: any }?,
 	ConsoleOutput: string?,
 	ConsoleOutputType: string?,
 	ConsoleThrottle: number?,
@@ -58,6 +59,10 @@ local TriggerService = knit.CreateService {
 }
 
 --//Helpers
+--[[
+	parseModelNames – Splits a comma-separated string of model names into
+	a list of trimmed, non-empty strings.
+]]
 -->! Splits a comma-separated string of model names, useful for triggering multiple models at once
 local function parseModelNames(raw: string): { string }
 	local names: { string } = {}
@@ -70,6 +75,10 @@ local function parseModelNames(raw: string): { string }
 	return names
 end
 
+--[[
+	executeForModels – Runs the given action for each model name in the
+	comma-separated list, either on the server or by signalling the client.
+]]
 -->! Distributes the action either globally (server mode) or locally via network signals (client mode)
 local function executeForModels(modelNames: { string }, action: string, player: Player?)
 	local isServerMode = GeneralConfig.Global_ReplicationMode == "Server"
@@ -85,6 +94,12 @@ local function executeForModels(modelNames: { string }, action: string, player: 
 	end
 end
 
+--[[
+	processTrigger – Wires a Touch or Click connection to the trigger part.
+	When fired, executes the configured action on all listed models either
+	on the server or by signalling the client, depending on
+	GeneralConfig.ReplicationMode.
+]]
 local function processTrigger(partData: TriggerPartData)
 	-->! Break down part data
 	local triggerPart = partData.Part
@@ -93,6 +108,7 @@ local function processTrigger(partData: TriggerPartData)
 	local action = partData.TriggerAction
 	local setHintText = partData.SetHint
 	local playSoundName = partData.PlaySound
+	local outputData = partData.OutputData
 	local consoleOutput = partData.ConsoleOutput
 	local consoleOutputType = partData.ConsoleOutputType
 	local consoleThrottle = partData.ConsoleThrottle
@@ -140,6 +156,7 @@ local function processTrigger(partData: TriggerPartData)
 			partData.ClickDetector = nCD
 		end
 
+		-->! Setup click connection
 		partData.Connection = clickDetector.MouseClick:Connect(function(player: Player)
 			-->vv Output to console if output data is present vv
 			if outputData then
@@ -219,10 +236,17 @@ local function processTrigger(partData: TriggerPartData)
 end
 
 --//Private functions
+--[[
+	handleModelSummonTriggerPart – Observer callback for parts tagged with
+	GeneralConfig.TriggerPartTag. Reads the ModelToSummon and TriggerType
+	attributes, validates them, wires the trigger, and returns a cleanup
+	function that disconnects the connection when the tag is removed.
+]]
 -->! Extracts configuration attributes from the part and sets up the observer lifecycle
 local function handleModelSummonTriggerPart(part: Part): () -> ()
 	assert(part:IsA("BasePart"), "Part expected for trigger part, got " .. part.ClassName)
 
+	-->! Read and validate attributes
 	local modelToSummon = part:GetAttribute("ModelToSummon")
 	if modelToSummon and type(modelToSummon) ~= "string" then
 		modelToSummon = nil
@@ -296,10 +320,12 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 	elseif shouldNormalise and type(shouldNormalise) ~= "boolean" then
 		shouldNormalise = nil
 	end
+	-->! Default ShouldNormalise to the configured default if not set or invalid
 	if shouldNormalise == nil then
 		shouldNormalise = GeneralConfig.Chat_DefaultNormalisation
 	end
 
+	-->! Construct part data and wire the trigger
 	local partData: TriggerPartData = {
 		Part = part,
 		ModelToSummon = modelToSummon :: string?,
@@ -310,13 +336,13 @@ local function handleModelSummonTriggerPart(part: Part): () -> ()
 		ChatData = chatData :: string?,
 		OutputData = outputData :: { [string]: any }?,
 		ShouldNormalise = shouldNormalise :: boolean?,
-		ChatData = chatData :: string?,
 		ConsoleOutput = consoleOutput :: string?,
 		ConsoleOutputType = consoleOutputType :: string?,
 		ConsoleThrottle = consoleThrottle :: number?,
 		ConsoleAmount = consoleAmount :: number?
 	}
 
+	-->! Process the trigger
 	processTrigger(partData)
 
 	-->! Disconnect events if the trigger tag is removed during runtime
@@ -348,6 +374,7 @@ function TriggerService:KnitInit()
 end
 
 function TriggerService:KnitStart()
+	-->! Observe trigger parts and wire their connections
 	observeTag(GeneralConfig.Trigger_PartTag, handleModelSummonTriggerPart)
 end
 

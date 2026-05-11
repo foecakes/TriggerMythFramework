@@ -4,7 +4,7 @@
 
     Trigger Myth Framework is a Roblox framework built on Knit that lets you set up 
     trigger-based events to reveal hidden Models and Folders in your game. Tag your 
-    unlockables, place trigger parts, and the framework handles the rest - staggered 
+    unlockables, place trigger parts, and the framework handles the rest - 
     fade-in animations, collision toggling, and state tracking via attributes.
 
     NO-CODE MYTH CREATION FOR THE ROBLOX MYTH COMMUNITY
@@ -32,7 +32,7 @@
 
     2. TRIGGER ACTIONS (The "Effect")
     Dictates what happens to the linked UnlockableModel (TriggerAction attribute):
-    - Appear: Reveals an UnlockableModel, fading it into view with a staggered animation.
+    - Appear: Reveals an UnlockableModel, fading it into view.
     - Disappear: Hides an UnlockableModel, fading it out part-by-part. Collision is disabled.
 
     3. SECONDARY EFFECTS (Optional Attributes)

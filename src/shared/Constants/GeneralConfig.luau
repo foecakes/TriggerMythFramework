@@ -17,7 +17,6 @@
 --//Types
 export type GeneralConfigT = {
 	Model_AnimationsOn: boolean, -->! Whether models animate during appearance/disappearance
-	Model_UseStaggeredAnimation: boolean, -->! Whether the animation staggers parts
 	Global_ReplicationMode: "Client" | "Server", -->! Determines if triggers run locally (Client) or globally (Server)
 	Trigger_DefaultType: string, -->! Fallback when a trigger part lacks a TriggerType attribute
 	Trigger_DefaultAction: string, -->! Fallback action ("Appear" or "Disappear")
@@ -32,7 +31,6 @@ export type GeneralConfigT = {
 --//Constants
 local GeneralConfig: GeneralConfigT = {
 	Model_AnimationsOn = true,
-	Model_UseStaggeredAnimation = false,
 	Global_ReplicationMode = "Client",
 	Trigger_DefaultType = "Touch",
 	Trigger_DefaultAction = "Appear",

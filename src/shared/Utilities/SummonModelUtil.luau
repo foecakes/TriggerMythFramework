@@ -25,7 +25,6 @@ local GeneralConfig = require(ReplicatedStorage.Shared.Constants.GeneralConfig)
 --//Constants
 local UNLOCKABLE_TAG = GeneralConfig.Model_UnlockableTag
 local TWEEN_INFO = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local STAGGER_DELAY = 0.02
 
 --//Types
 type PartSnapshot = {
@@ -186,7 +185,7 @@ end
 
 --[[
 	AppearModel – Tweens a tagged Model/Folder from hidden to its original
-	visual state with a staggered per-part delay.
+	visual state.
 	-> Transparency tweens from 1 -> original.
 	-> CanCollide is restored to its original value AFTER the tween finishes
 	   (so players don't collide with invisible geometry). Parts that were
@@ -213,14 +212,13 @@ function SummonModelUtil.AppearModel(instance: Instance)
 	end
 
 	if GeneralConfig.Model_AnimationsOn == true then
-		-->! Staggered tween each part back to its original transparency
+		-->! Tween each part back to its original transparency
 		local tasks: { thread } = {}
 		pendingTasks[instance] = tasks
 
-		for i, obj in ipairs(cache.partList) do
+		for _, obj in ipairs(cache.partList) do
 			local snapshot = cache.partData[obj]
-			local delayTime = if GeneralConfig.Model_UseStaggeredAnimation then (i - 1) * STAGGER_DELAY else 0
-			local handle = task.delay(delayTime, function()
+			local handle = task.delay(0, function()
 				if not obj.Parent then return end
 
 				playTween(obj, { Transparency = snapshot.Transparency })
@@ -259,7 +257,7 @@ end
 
 --[[
 	DisappearModel – Tweens a tagged Model/Folder back to hidden with a
-	staggered per-part delay.
+	per-part tween.
 	-> CanCollide is disabled immediately (prevents interaction during fade-out).
 	-> Transparency tweens from current -> 1.
 	-> Sets the "Unlocked" attribute to false.
@@ -274,13 +272,12 @@ function SummonModelUtil.DisappearModel(instance: Instance)
 	end
 
 	if GeneralConfig.Model_AnimationsOn == true then
-		-->! Staggered tween each part to hidden
+		-->! Tween each part to hidden
 		local tasks: { thread } = {}
 		pendingTasks[instance] = tasks
 
-		for i, obj in ipairs(cache.partList) do
-			local delayTime = if GeneralConfig.Model_UseStaggeredAnimation then (i - 1) * STAGGER_DELAY else 0
-			local handle = task.delay(delayTime, function()
+		for _, obj in ipairs(cache.partList) do
+			local handle = task.delay(0, function()
 				if not obj.Parent then return end
 
 				-->! Disable collision immediately so players can't interact during fade

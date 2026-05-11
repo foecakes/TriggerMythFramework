@@ -1,42 +1,48 @@
 --[[
-	GENERAL CONFIGURATION FILE - DOCUMENTATION & GUIDE
+	GENERAL CONFIGURATION
 	Author: @FoeCakes
 
-	
+	DESCRIPTION:
+		Centralised configuration file for the TriggerMyth framework.
+		Modifying values here alters the global behavior of the trigger system.
+
+	USAGE:
+		local GeneralConfig = require(path.to.GeneralConfig)
+		print(GeneralConfig.AnimationsOn)
+
+	NOTES:
+		Contains the type definitions for strict type checking.
 ]]
+
 --//Types
 export type GeneralConfigT = {
-	AnimationsOn: boolean, -->! Whether or not to animate models when they appear
-	ReplicationMode: "Client" | "Server", -->! Whether to make detections & summon models on the client or server.
-	
-	DefaultTriggerType: string, -->! The default trigger type to use if no TriggerType attribute is found on a trigger part
-	DefaultTriggerAction: string, -->! The default trigger action ("Appear" | "Disappear") when no TriggerAction attribute is found
-	
-	TriggerPartTag: string, -->! The tag used to identify trigger parts
-	UnlockableTag: string, -->! The tag used to identify unlockable models
-	
-	DefaultChatNormalisation: boolean, -->! Whether or not chat messages should be normalised before being compared
-	
-	DefaultOutputType: string, -->! The default output method for console messages ("print" | "warn" | "eror")
-	DefaultConsoleThrottle: number, -->! Delay in seconds between console output messages (0 = no delay)
-	DefaultConsoleAmount: number -->! Amount of times the message is output
+	Model_AnimationsOn: boolean, -->! Whether models animate during appearance/disappearance
+	Model_UseStaggeredAnimation: boolean, -->! Whether the animation staggers parts
+	Global_ReplicationMode: "Client" | "Server", -->! Determines if triggers run locally (Client) or globally (Server)
+	Trigger_DefaultType: string, -->! Fallback when a trigger part lacks a TriggerType attribute
+	Trigger_DefaultAction: string, -->! Fallback action ("Appear" or "Disappear")
+	Trigger_PartTag: string, -->! CollectionService tag for interactive parts
+	Model_UnlockableTag: string, -->! CollectionService tag for hidden models
+	Chat_DefaultNormalisation: boolean, -->! Controls if chat triggers ignore casing and whitespace by default
+	Console_DefaultOutputType: string, -->! Fallback console output method
+	Console_DefaultThrottle: number, -->! Default wait time between repeated console outputs
+	Console_DefaultAmount: number -->! Default repeat count for console outputs
 }
 
+--//Constants
 local GeneralConfig: GeneralConfigT = {
-	AnimationsOn = true, -->! Whether or not to animate models when they appear
-	ReplicationMode = "Client", -->! Whether to make detections & summon models on the client or server.
-	
-	DefaultTriggerType = "Touch", -->! The default trigger type to use if no TriggerType attribute is found on a trigger part
-	DefaultTriggerAction = "Appear", -->! The default trigger action ("Appear" | "Disappear") when no TriggerAction attribute is found
-	
-	TriggerPartTag = "TRIGGER_PART", -->! The tag used to identify trigger parts
-	UnlockableTag = "UnlockableModel", -->! The tag used to identify unlockable models
-	
-	DefaultChatNormalisation = false, -->! Whether or not chat messages should be normalised before being compared
-	
-	DefaultOutputType = "print", -->! The default output method for console messages ("print" | "warn" | "eror")
-	DefaultConsoleThrottle = 0, -->! Delay in seconds between console output messages (0 = no delay)
-	DefaultConsoleAmount = 1, -->! Amount of times the message is output
+	Model_AnimationsOn = true,
+	Model_UseStaggeredAnimation = false,
+	Global_ReplicationMode = "Client",
+	Trigger_DefaultType = "Touch",
+	Trigger_DefaultAction = "Appear",
+	Trigger_PartTag = "TRIGGER_PART",
+	Model_UnlockableTag = "UnlockableModel",
+	Chat_DefaultNormalisation = false,
+	Console_DefaultOutputType = "print",
+	Console_DefaultThrottle = 0,
+	Console_DefaultAmount = 1
 }
 
+--//Return
 return GeneralConfig

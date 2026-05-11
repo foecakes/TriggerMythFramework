@@ -16,7 +16,7 @@ We are committed to providing a welcoming and inspiring environment for all, reg
 * Publishing others' private information without explicit permission.
 
 ## Enforcement
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the project team at <contact@stopkillingmyths.com>. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting FoeCakes or Kiceba. All complaints will be reviewed and investigated promptly and fairly.
 
 ## Attribution
-This project strictly adheres to the [Contributor Covenant v2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). By participating in this project, you are expected to uphold this code. For the full text and guidelines, please refer to the link above.
+This project adheres to the [Contributor Covenant v2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). By participating in this project, you are expected to uphold this code. For the full text and guidelines, please refer to the link above.
